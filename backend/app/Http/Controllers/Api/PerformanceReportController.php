@@ -36,4 +36,15 @@ class PerformanceReportController extends Controller
 
         return response()->json($report->load('measurer:id,name'), 201);
     }
+
+    public function destroy(Request $request, Project $project, \App\Models\PerformanceReport $performanceReport)
+    {
+        if ($performanceReport->project_id !== $project->id) {
+            abort(404);
+        }
+
+        $performanceReport->delete();
+
+        return response()->json(['message' => 'تم حذف التقرير.']);
+    }
 }

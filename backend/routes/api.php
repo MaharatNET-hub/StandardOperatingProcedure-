@@ -25,8 +25,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');
+    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('role:admin');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin');
 
-    Route::apiResource('projects', ProjectController::class)->except(['destroy']);
+    Route::apiResource('projects', ProjectController::class);
 
     Route::patch('/projects/{project}/phases/{phase}', [ProjectPhaseController::class, 'update']);
 
@@ -39,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{project}/plugin-requests', [PluginRequestController::class, 'store']);
     Route::patch('/plugin-requests/{pluginRequest}/decide', [PluginRequestController::class, 'decide'])
         ->middleware('role:admin,it_specialist');
+    Route::delete('/plugin-requests/{pluginRequest}', [PluginRequestController::class, 'destroy'])
+        ->middleware('role:admin');
 
     Route::get('/projects/{project}/licenses', [LicenseController::class, 'index']);
     Route::post('/projects/{project}/licenses', [LicenseController::class, 'store']);
@@ -47,6 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/projects/{project}/performance-reports', [PerformanceReportController::class, 'index']);
     Route::post('/projects/{project}/performance-reports', [PerformanceReportController::class, 'store']);
+    Route::delete('/projects/{project}/performance-reports/{performanceReport}', [PerformanceReportController::class, 'destroy'])
+        ->middleware('role:admin');
 
     Route::get('/projects/{project}/qa-reviews', [QaReviewController::class, 'index']);
     Route::get('/projects/{project}/qa-reviews/latest', [QaReviewController::class, 'latest']);
