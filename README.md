@@ -41,10 +41,10 @@ php artisan serve        # يعمل على http://localhost:8000
 
 | الدور | البريد الإلكتروني | كلمة المرور |
 |---|---|---|
-| مدير / CTO | cto@maharatnet.com | password |
+| مدير / CTO | rahaf@maharatnet.com | password |
 | أخصائي تقنية معلومات | it@maharatnet.com | password |
 | مراجع جودة (QA) | qa@maharatnet.com | password |
-| مبرمج | developer@maharatnet.com | password |
+| مبرمج | support@maharatnet.com | password |
 
 ⚠️ يجب تغيير كلمات المرور هذه فوراً في أي بيئة إنتاج.
 
