@@ -21,9 +21,14 @@ async function logout() {
 <template>
   <div class="min-h-screen flex bg-slate-50">
     <aside class="w-64 shrink-0 bg-indigo-950 text-indigo-100 flex flex-col">
-      <div class="p-5 border-b border-indigo-900">
-        <div class="font-bold text-white text-lg">نظام إدارة الجودة</div>
-        <div class="text-xs text-indigo-300 mt-1">مشاريع WordPress / Astra</div>
+      <div class="p-5 border-b border-indigo-900 flex items-center gap-3">
+        <div class="bg-white rounded-lg p-1.5 shrink-0">
+          <img src="/logo-icon.png" alt="Maharat Net" class="w-8 h-8 object-contain" />
+        </div>
+        <div>
+          <div class="font-bold text-white text-sm leading-tight">Maharat Net</div>
+          <div class="text-xs text-indigo-300 mt-0.5">نظام إدارة الجودة والمشاريع</div>
+        </div>
       </div>
 
       <nav class="flex-1 p-3 space-y-1">
