@@ -59,6 +59,7 @@ function openCreate() {
   form.value = emptyForm()
   error.value = ''
   showForm.value = true
+  loadUsers()
 }
 
 function openEdit(project) {
@@ -72,6 +73,7 @@ function openEdit(project) {
   }
   error.value = ''
   showForm.value = true
+  loadUsers()
 }
 
 async function submitForm() {
@@ -199,9 +201,20 @@ onMounted(() => {
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">المبرمجون المكلّفون</label>
-            <select v-model="form.developer_ids" multiple class="w-full rounded-lg border border-slate-300 px-3 py-2 h-28">
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
-            </select>
+            <div class="w-full rounded-lg border border-slate-300 divide-y divide-slate-100 max-h-40 overflow-y-auto">
+              <label
+                v-for="u in users"
+                :key="u.id"
+                class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+              >
+                <input type="checkbox" :value="u.id" v-model="form.developer_ids" class="rounded border-slate-300" />
+                {{ u.name }}
+                <span class="text-slate-400 text-xs">({{ u.email }})</span>
+              </label>
+              <p v-if="!users.length" class="px-3 py-3 text-sm text-slate-400">
+                لا يوجد مبرمجون بعد — أضفهم من صفحة "فريق العمل" أولاً.
+              </p>
+            </div>
           </div>
 
           <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
