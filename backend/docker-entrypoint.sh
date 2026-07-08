@@ -6,6 +6,9 @@ if [ ! -f /app/database/database.sqlite ]; then
   php artisan migrate --force --seed
 else
   php artisan migrate --force
+  # Demo accounts are matched by role, so re-running this on every boot
+  # keeps emails/names in sync with the source without wiping project data.
+  php artisan db:seed --class=UserSeeder --force
 fi
 
 php artisan storage:link || true
