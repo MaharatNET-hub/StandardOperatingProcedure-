@@ -1,0 +1,17 @@
+vendor
+node_modules
+.env
+.env.*
+!.env.example
+database/*.sqlite
+storage/app/public/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+.git
+.github
+.vscode
+tests
+Dockerfile
+.dockerignore
