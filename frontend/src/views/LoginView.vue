@@ -30,11 +30,9 @@ async function submit() {
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 px-4">
     <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8">
       <div class="text-center mb-8">
-        <div class="mx-auto w-14 h-14 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-2xl font-bold mb-3">
-          S
-        </div>
+        <img src="/logo-icon.png" alt="Maharat Net" class="mx-auto w-16 h-16 object-contain mb-3" />
         <h1 class="text-xl font-bold text-slate-900">نظام إدارة الجودة والمشاريع</h1>
-        <p class="text-sm text-slate-500 mt-1">دليل إجراءات العمل الموحّد (SOP)</p>
+        <p class="text-sm text-slate-500 mt-1">Maharat Net — دليل إجراءات العمل الموحّد (SOP)</p>
       </div>
 
       <form class="space-y-4" @submit.prevent="submit">
