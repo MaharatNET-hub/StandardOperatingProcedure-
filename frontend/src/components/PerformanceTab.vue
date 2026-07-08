@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../lib/api'
+import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({ project: Object })
+const auth = useAuthStore()
 
 const reports = ref([])
 const loading = ref(true)
@@ -43,6 +45,11 @@ async function createReport() {
   } finally {
     creating.value = false
   }
+}
+
+async function removeReport(report) {
+  await api.delete(`/projects/${props.project.id}/performance-reports/${report.id}`)
+  await load()
 }
 
 onMounted(load)
@@ -93,7 +100,12 @@ onMounted(load)
       <div v-for="r in reports" :key="r.id" class="bg-white rounded-xl border border-slate-200 p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="font-semibold text-slate-900">{{ stageLabels[r.stage] }}</span>
-          <span class="text-xs text-slate-400">{{ new Date(r.measured_at).toLocaleDateString('ar') }}</span>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">{{ new Date(r.measured_at).toLocaleDateString('ar') }}</span>
+            <button v-if="auth.isAdmin" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeReport(r)">
+              حذف
+            </button>
+          </div>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div><span class="text-slate-400">Lighthouse موبايل:</span> {{ r.lighthouse_mobile ?? '—' }}</div>

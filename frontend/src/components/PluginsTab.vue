@@ -43,6 +43,11 @@ async function decide(request, status) {
   await load()
 }
 
+async function removeRequest(request) {
+  await api.delete(`/plugin-requests/${request.id}`)
+  await load()
+}
+
 onMounted(load)
 </script>
 
@@ -84,6 +89,9 @@ onMounted(load)
                 رفض
               </button>
             </div>
+            <button v-if="auth.isAdmin" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeRequest(r)">
+              حذف
+            </button>
           </div>
         </div>
       </div>

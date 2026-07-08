@@ -52,4 +52,11 @@ class PluginRequestController extends Controller
 
         return $pluginRequest->fresh(['requester:id,name', 'decider:id,name']);
     }
+
+    public function destroy(Request $request, PluginRequest $pluginRequest)
+    {
+        $pluginRequest->delete();
+
+        return response()->json(['message' => 'تم حذف الطلب.']);
+    }
 }

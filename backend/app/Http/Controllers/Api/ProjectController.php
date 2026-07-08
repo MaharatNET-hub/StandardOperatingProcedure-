@@ -121,6 +121,20 @@ class ProjectController extends Controller
         return $project->fresh(['developers', 'currentPhase']);
     }
 
+    public function destroy(Request $request, Project $project)
+    {
+        if (! $request->user()->isAdmin()) {
+            abort(403, 'حذف المشاريع متاح للمدير فقط.');
+        }
+
+        $name = $project->name;
+        $project->delete();
+
+        ActivityLog::log(null, $request->user()->id, 'project_deleted', "تم حذف المشروع: {$name}");
+
+        return response()->json(['message' => 'تم حذف المشروع.']);
+    }
+
     private function authorizeProjectAccess(Request $request, Project $project): void
     {
         $user = $request->user();

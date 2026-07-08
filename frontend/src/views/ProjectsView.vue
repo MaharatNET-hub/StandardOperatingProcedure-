@@ -10,17 +10,21 @@ const router = useRouter()
 const projects = ref([])
 const users = ref([])
 const loading = ref(true)
-const showCreate = ref(false)
-const creating = ref(false)
+const showForm = ref(false)
+const editingProject = ref(null)
+const saving = ref(false)
 const error = ref('')
+const deleting = ref(null)
 
-const form = ref({
+const emptyForm = () => ({
   name: '',
   client_name: '',
   envato_preview_url: '',
   content_deadline: '',
   developer_ids: [],
 })
+
+const form = ref(emptyForm())
 
 const statusLabels = {
   in_progress: 'قيد التنفيذ',
@@ -50,17 +54,58 @@ async function loadUsers() {
   users.value = data.filter((u) => u.role === 'developer')
 }
 
-async function createProject() {
+function openCreate() {
+  editingProject.value = null
+  form.value = emptyForm()
   error.value = ''
-  creating.value = true
+  showForm.value = true
+}
+
+function openEdit(project) {
+  editingProject.value = project
+  form.value = {
+    name: project.name,
+    client_name: project.client_name,
+    envato_preview_url: project.envato_preview_url || '',
+    content_deadline: project.content_deadline || '',
+    developer_ids: (project.developers || []).map((d) => d.id),
+  }
+  error.value = ''
+  showForm.value = true
+}
+
+async function submitForm() {
+  error.value = ''
+  saving.value = true
   try {
-    const { data } = await api.post('/projects', form.value)
-    showCreate.value = false
-    router.push({ name: 'project-detail', params: { id: data.id } })
+    if (editingProject.value) {
+      await api.patch(`/projects/${editingProject.value.id}`, form.value)
+      showForm.value = false
+      await loadProjects()
+    } else {
+      const { data } = await api.post('/projects', form.value)
+      showForm.value = false
+      router.push({ name: 'project-detail', params: { id: data.id } })
+    }
   } catch (e) {
-    error.value = e.response?.data?.message || 'حدث خطأ أثناء إنشاء المشروع.'
+    error.value = e.response?.data?.message || 'حدث خطأ أثناء الحفظ.'
   } finally {
-    creating.value = false
+    saving.value = false
+  }
+}
+
+async function confirmDelete(project) {
+  deleting.value = project
+}
+
+async function deleteProject() {
+  const project = deleting.value
+  try {
+    await api.delete(`/projects/${project.id}`)
+    deleting.value = null
+    await loadProjects()
+  } catch (e) {
+    deleting.value = null
   }
 }
 
@@ -77,7 +122,7 @@ onMounted(() => {
       <button
         v-if="auth.isAdmin"
         class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2 transition"
-        @click="showCreate = true"
+        @click="openCreate"
       >
         + مشروع جديد
       </button>
@@ -94,6 +139,7 @@ onMounted(() => {
             <th class="text-right px-4 py-3 font-medium">المرحلة الحالية</th>
             <th class="text-right px-4 py-3 font-medium">التحقق</th>
             <th class="text-right px-4 py-3 font-medium">الحالة</th>
+            <th v-if="auth.isAdmin" class="text-right px-4 py-3 font-medium">إجراءات</th>
           </tr>
         </thead>
         <tbody>
@@ -114,19 +160,27 @@ onMounted(() => {
                 {{ statusLabels[p.status] || p.status }}
               </span>
             </td>
+            <td v-if="auth.isAdmin" class="px-4 py-3" @click.stop>
+              <div class="flex gap-3 text-xs">
+                <button class="text-indigo-600 hover:underline" @click="openEdit(p)">تعديل</button>
+                <button class="text-red-500 hover:underline" @click="confirmDelete(p)">حذف</button>
+              </div>
+            </td>
           </tr>
           <tr v-if="!projects.length">
-            <td colspan="5" class="px-4 py-8 text-center text-slate-400">لا توجد مشاريع بعد.</td>
+            <td colspan="6" class="px-4 py-8 text-center text-slate-400">لا توجد مشاريع بعد.</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Create modal -->
-    <div v-if="showCreate" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <!-- Create/Edit modal -->
+    <div v-if="showForm" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-        <h2 class="text-lg font-bold text-slate-900 mb-4">مشروع جديد</h2>
-        <form class="space-y-4" @submit.prevent="createProject">
+        <h2 class="text-lg font-bold text-slate-900 mb-4">
+          {{ editingProject ? 'تعديل المشروع' : 'مشروع جديد' }}
+        </h2>
+        <form class="space-y-4" @submit.prevent="submitForm">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع</label>
             <input v-model="form.name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
@@ -153,18 +207,34 @@ onMounted(() => {
           <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
           <div class="flex gap-3 justify-end pt-2">
-            <button type="button" class="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-slate-100" @click="showCreate = false">
+            <button type="button" class="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-slate-100" @click="showForm = false">
               إلغاء
             </button>
             <button
               type="submit"
-              :disabled="creating"
+              :disabled="saving"
               class="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-60"
             >
-              {{ creating ? '...جاري الإنشاء' : 'إنشاء المشروع' }}
+              {{ saving ? '...جاري الحفظ' : editingProject ? 'حفظ التعديلات' : 'إنشاء المشروع' }}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Delete confirm -->
+    <div v-if="deleting" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h2 class="text-lg font-bold text-slate-900 mb-2">حذف المشروع</h2>
+        <p class="text-sm text-slate-600 mb-5">
+          سيتم حذف مشروع "<strong>{{ deleting.name }}</strong>" وكل بياناته (قائمة التحقق، الطلبات، التراخيص، التقارير) نهائياً. هل أنت متأكد؟
+        </p>
+        <div class="flex gap-3 justify-end">
+          <button class="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-slate-100" @click="deleting = null">إلغاء</button>
+          <button class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium" @click="deleteProject">
+            حذف نهائياً
+          </button>
+        </div>
       </div>
     </div>
   </div>
