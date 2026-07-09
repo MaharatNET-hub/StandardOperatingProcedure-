@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({ project: Object })
 const auth = useAuthStore()
+const router = useRouter()
 
 const reports = ref([])
 const loading = ref(true)
@@ -23,6 +25,12 @@ const form = ref({
   measured_at: today,
 })
 
+const runUrl = ref(props.project.site_url || '')
+const runStage = ref('final_site')
+const running = ref(false)
+const runError = ref('')
+const openIssues = ref({})
+
 const stageLabels = { original_template: 'القالب الأصلي (Envato Demo)', final_site: 'الموقع النهائي' }
 
 const originalReport = computed(() => reports.value.find((r) => r.stage === 'original_template'))
@@ -33,6 +41,26 @@ async function load() {
   const { data } = await api.get(`/projects/${props.project.id}/performance-reports`)
   reports.value = data
   loading.value = false
+}
+
+async function runPageSpeed() {
+  runError.value = ''
+  if (!runUrl.value) {
+    runError.value = 'أدخل رابط الموقع أولاً.'
+    return
+  }
+  running.value = true
+  try {
+    await api.post(`/projects/${props.project.id}/performance-reports/run-pagespeed`, {
+      url: runUrl.value,
+      stage: runStage.value,
+    })
+    await load()
+  } catch (e) {
+    runError.value = e.response?.data?.message || 'تعذر تشغيل الفحص.'
+  } finally {
+    running.value = false
+  }
 }
 
 async function createReport() {
@@ -52,6 +80,18 @@ async function removeReport(report) {
   await load()
 }
 
+function toggleIssues(reportId, device) {
+  const key = `${reportId}-${device}`
+  openIssues.value[key] = !openIssues.value[key]
+}
+
+function scoreColor(score) {
+  if (score === null || score === undefined) return 'text-slate-400'
+  if (score >= 90) return 'text-emerald-600'
+  if (score >= 50) return 'text-amber-600'
+  return 'text-red-600'
+}
+
 onMounted(load)
 </script>
 
@@ -63,10 +103,7 @@ onMounted(load)
         <div class="flex items-end gap-3">
           <span class="text-slate-400 text-lg">{{ originalReport.lighthouse_mobile ?? '—' }}</span>
           <span class="text-slate-300">→</span>
-          <span
-            class="text-2xl font-bold"
-            :class="(finalReport.lighthouse_mobile ?? 0) >= 85 ? 'text-emerald-600' : 'text-amber-600'"
-          >
+          <span class="text-2xl font-bold" :class="scoreColor(finalReport.lighthouse_mobile)">
             {{ finalReport.lighthouse_mobile ?? '—' }}
           </span>
           <span class="text-xs text-slate-400 mb-1">/ الهدف 85+</span>
@@ -88,9 +125,46 @@ onMounted(load)
       </div>
     </div>
 
+    <!-- Automated PageSpeed check -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+      <h2 class="font-semibold text-slate-900 mb-1">فحص PageSpeed / Lighthouse تلقائي</h2>
+      <p class="text-sm text-slate-500 mb-4">يجلب نتيجة السرعة الفعلية للموبايل والديسكتوب مباشرة من Google، مع تفاصيل المشاكل المكتشفة.</p>
+
+      <div class="flex flex-col md:flex-row gap-3">
+        <input
+          v-model="runUrl"
+          type="url"
+          placeholder="https://example.com"
+          class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+        <select v-model="runStage" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <option value="original_template">القالب الأصلي (Envato Demo)</option>
+          <option value="final_site">الموقع النهائي</option>
+        </select>
+        <button
+          :disabled="running"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2 disabled:opacity-60 whitespace-nowrap"
+          @click="runPageSpeed"
+        >
+          {{ running ? '...جاري الفحص (قد يستغرق دقيقة)' : 'تشغيل الفحص' }}
+        </button>
+      </div>
+
+      <p v-if="runError" class="text-sm text-red-600 mt-3">
+        {{ runError }}
+        <button
+          v-if="runError.includes('مفتاح') && auth.isAdmin"
+          class="text-indigo-600 hover:underline"
+          @click="router.push({ name: 'settings' })"
+        >
+          الذهاب إلى الإعدادات
+        </button>
+      </p>
+    </div>
+
     <div class="flex justify-end mb-4">
-      <button class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2" @click="showCreate = true">
-        + تسجيل قياس أداء
+      <button class="text-sm text-indigo-600 hover:underline" @click="showCreate = true">
+        + إدخال قياس يدوياً بدلاً من ذلك
       </button>
     </div>
 
@@ -99,7 +173,10 @@ onMounted(load)
     <div v-else class="space-y-3">
       <div v-for="r in reports" :key="r.id" class="bg-white rounded-xl border border-slate-200 p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="font-semibold text-slate-900">{{ stageLabels[r.stage] }}</span>
+          <span class="font-semibold text-slate-900">
+            {{ stageLabels[r.stage] }}
+            <span v-if="r.is_automated" class="text-xs font-normal text-indigo-500 bg-indigo-50 rounded-full px-2 py-0.5 ms-1">تلقائي</span>
+          </span>
           <div class="flex items-center gap-3">
             <span class="text-xs text-slate-400">{{ new Date(r.measured_at).toLocaleDateString('ar') }}</span>
             <button v-if="auth.isAdmin" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeReport(r)">
@@ -107,12 +184,49 @@ onMounted(load)
             </button>
           </div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <div><span class="text-slate-400">Lighthouse موبايل:</span> {{ r.lighthouse_mobile ?? '—' }}</div>
-          <div><span class="text-slate-400">Lighthouse ديسكتوب:</span> {{ r.lighthouse_desktop ?? '—' }}</div>
+
+        <div v-if="r.source_url" class="text-xs text-slate-400 mb-2 truncate">{{ r.source_url }}</div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-2">
+          <div>
+            <span class="text-slate-400">Lighthouse موبايل:</span>
+            <span class="font-semibold" :class="scoreColor(r.lighthouse_mobile)">{{ r.lighthouse_mobile ?? '—' }}</span>
+          </div>
+          <div>
+            <span class="text-slate-400">Lighthouse ديسكتوب:</span>
+            <span class="font-semibold" :class="scoreColor(r.lighthouse_desktop)">{{ r.lighthouse_desktop ?? '—' }}</span>
+          </div>
           <div><span class="text-slate-400">عدد الإضافات:</span> {{ r.plugin_count ?? '—' }}</div>
           <div><span class="text-slate-400">قِيسَ بواسطة:</span> {{ r.measurer?.name }}</div>
         </div>
+
+        <!-- Issues from automated checks -->
+        <div v-if="r.issues" class="grid md:grid-cols-2 gap-3 mt-3">
+          <div v-for="device in ['mobile', 'desktop']" :key="device">
+            <button
+              v-if="r.issues[device]?.length"
+              class="text-xs font-medium text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5 w-full text-right"
+              @click="toggleIssues(r.id, device)"
+            >
+              {{ device === 'mobile' ? 'مشاكل الموبايل' : 'مشاكل الديسكتوب' }} ({{ r.issues[device].length }})
+              {{ openIssues[`${r.id}-${device}`] ? '−' : '+' }}
+            </button>
+            <div v-if="openIssues[`${r.id}-${device}`]" class="mt-2 space-y-2">
+              <div
+                v-for="issue in r.issues[device]"
+                :key="issue.id"
+                class="text-xs border border-slate-100 rounded-lg p-2.5"
+              >
+                <div class="font-medium text-slate-800">
+                  {{ issue.title }}
+                  <span v-if="issue.display_value" class="text-amber-600">— {{ issue.display_value }}</span>
+                </div>
+                <p class="text-slate-500 mt-1 leading-relaxed">{{ issue.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="flex gap-4 mt-2 text-xs">
           <a v-if="r.pagespeed_url" :href="r.pagespeed_url" target="_blank" class="text-indigo-600 hover:underline">تقرير PageSpeed ↗</a>
           <a v-if="r.screaming_frog_report_url" :href="r.screaming_frog_report_url" target="_blank" class="text-indigo-600 hover:underline">تقرير Screaming Frog ↗</a>
@@ -124,7 +238,7 @@ onMounted(load)
 
     <div v-if="showCreate" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 my-8">
-        <h2 class="text-lg font-bold text-slate-900 mb-4">تسجيل قياس أداء</h2>
+        <h2 class="text-lg font-bold text-slate-900 mb-4">تسجيل قياس أداء يدوي</h2>
         <form class="space-y-4" @submit.prevent="createReport">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">المرحلة</label>

@@ -16,6 +16,7 @@ const routes = [
       { path: 'projects', name: 'projects', component: () => import('../views/ProjectsView.vue') },
       { path: 'projects/:id', name: 'project-detail', component: () => import('../views/ProjectDetailView.vue'), props: true },
       { path: 'team', name: 'team', component: () => import('../views/TeamView.vue'), meta: { roles: ['admin'] } },
+      { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { roles: ['admin'] } },
     ],
   },
 ]
