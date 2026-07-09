@@ -20,6 +20,7 @@ const emptyForm = () => ({
   name: '',
   client_name: '',
   envato_preview_url: '',
+  site_url: '',
   content_deadline: '',
   developer_ids: [],
 })
@@ -68,6 +69,7 @@ function openEdit(project) {
     name: project.name,
     client_name: project.client_name,
     envato_preview_url: project.envato_preview_url || '',
+    site_url: project.site_url || '',
     content_deadline: project.content_deadline || '',
     developer_ids: (project.developers || []).map((d) => d.id),
   }
@@ -194,6 +196,13 @@ onMounted(() => {
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">رابط Live Preview (Envato)</label>
             <input v-model="form.envato_preview_url" type="url" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              رابط الموقع المباشر
+              <span class="text-slate-400 font-normal">(لفحص PageSpeed)</span>
+            </label>
+            <input v-model="form.site_url" type="url" placeholder="https://example.com" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">مهلة تسليم المحتوى</label>

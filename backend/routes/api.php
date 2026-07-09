@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\QaReviewController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SignoffController;
 use App\Http\Controllers\Api\ToolController;
 use App\Http\Controllers\Api\UserController;
@@ -22,6 +23,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/tools', [ToolController::class, 'index']);
+
+    Route::get('/settings', [SettingController::class, 'show'])->middleware('role:admin');
+    Route::put('/settings', [SettingController::class, 'update'])->middleware('role:admin');
 
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');
@@ -51,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/projects/{project}/performance-reports', [PerformanceReportController::class, 'index']);
     Route::post('/projects/{project}/performance-reports', [PerformanceReportController::class, 'store']);
+    Route::post('/projects/{project}/performance-reports/run-pagespeed', [PerformanceReportController::class, 'runPageSpeed']);
     Route::delete('/projects/{project}/performance-reports/{performanceReport}', [PerformanceReportController::class, 'destroy'])
         ->middleware('role:admin');
 

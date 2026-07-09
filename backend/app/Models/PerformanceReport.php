@@ -14,12 +14,15 @@ class PerformanceReport extends Model
     protected $fillable = [
         'project_id',
         'stage',
+        'source_url',
+        'is_automated',
         'lighthouse_mobile',
         'lighthouse_desktop',
         'pagespeed_url',
         'screaming_frog_report_url',
         'plugin_count',
         'notes',
+        'issues',
         'measured_by',
         'measured_at',
     ];
@@ -28,6 +31,8 @@ class PerformanceReport extends Model
     {
         return [
             'measured_at' => 'datetime',
+            'is_automated' => 'boolean',
+            'issues' => 'array',
         ];
     }
 

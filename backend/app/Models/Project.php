@@ -23,6 +23,7 @@ class Project extends Model
         'name',
         'client_name',
         'envato_preview_url',
+        'site_url',
         'status',
         'current_phase_id',
         'created_by',
