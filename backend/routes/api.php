@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ChecklistCategoryController;
 use App\Http\Controllers\Api\ChecklistController;
+use App\Http\Controllers\Api\ChecklistItemController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\PerformanceReportController;
@@ -26,6 +28,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/settings', [SettingController::class, 'show'])->middleware('role:admin');
     Route::put('/settings', [SettingController::class, 'update'])->middleware('role:admin');
+
+    Route::get('/checklist-categories', [ChecklistCategoryController::class, 'index'])->middleware('role:admin');
+    Route::post('/checklist-categories', [ChecklistCategoryController::class, 'store'])->middleware('role:admin');
+    Route::patch('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'update'])->middleware('role:admin');
+    Route::delete('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'destroy'])->middleware('role:admin');
+    Route::post('/checklist-categories/{checklistCategory}/items', [ChecklistItemController::class, 'store'])->middleware('role:admin');
+    Route::patch('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'update'])->middleware('role:admin');
+    Route::delete('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'destroy'])->middleware('role:admin');
 
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');

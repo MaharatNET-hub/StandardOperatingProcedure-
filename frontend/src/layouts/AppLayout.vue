@@ -56,6 +56,14 @@ async function logout() {
         </router-link>
         <router-link
           v-if="auth.isAdmin"
+          :to="{ name: 'checklist-template' }"
+          class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
+          active-class="bg-indigo-800 text-white"
+        >
+          إدارة قائمة التحقق
+        </router-link>
+        <router-link
+          v-if="auth.isAdmin"
           :to="{ name: 'settings' }"
           class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
           active-class="bg-indigo-800 text-white"
