@@ -8,6 +8,7 @@ import PluginsTab from '../components/PluginsTab.vue'
 import LicensesTab from '../components/LicensesTab.vue'
 import PerformanceTab from '../components/PerformanceTab.vue'
 import QaReviewTab from '../components/QaReviewTab.vue'
+import SeoAuditTab from '../components/SeoAuditTab.vue'
 
 const props = defineProps({ id: [String, Number] })
 
@@ -38,6 +39,7 @@ const tabs = computed(() => [
   { key: 'plugins', label: 'حوكمة الإضافات' },
   { key: 'licenses', label: 'التراخيص' },
   { key: 'performance', label: 'تقارير الأداء' },
+  { key: 'seo', label: 'فحص SEO (Screaming Frog)' },
   { key: 'qa', label: 'مراجعة الجودة والاعتماد' },
 ])
 
@@ -122,6 +124,7 @@ onMounted(loadProject)
     <PluginsTab v-else-if="tab === 'plugins'" :project="project" />
     <LicensesTab v-else-if="tab === 'licenses'" :project="project" />
     <PerformanceTab v-else-if="tab === 'performance'" :project="project" />
+    <SeoAuditTab v-else-if="tab === 'seo'" :project="project" />
     <QaReviewTab v-else-if="tab === 'qa'" :project="project" @reload="loadProject" />
   </div>
 </template>
