@@ -45,5 +45,14 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        User::updateOrCreate(
+            ['role' => 'ceo'],
+            [
+                'name' => 'م. زيد',
+                'email' => 'zaid@maharatnet.com',
+                'password' => Hash::make('password'),
+            ]
+        );
     }
 }

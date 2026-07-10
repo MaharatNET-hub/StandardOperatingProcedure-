@@ -46,6 +46,7 @@ php artisan serve        # يعمل على http://localhost:8000
 | الدور | البريد الإلكتروني | كلمة المرور |
 |---|---|---|
 | مدير / CTO | rahaf@maharatnet.com | password |
+| المدير التنفيذي (CEO) | zaid@maharatnet.com | password |
 | أخصائي تقنية معلومات | it@maharatnet.com | password |
 | مراجع جودة (QA) | qa@maharatnet.com | password |
 | مبرمج | support@maharatnet.com | password |

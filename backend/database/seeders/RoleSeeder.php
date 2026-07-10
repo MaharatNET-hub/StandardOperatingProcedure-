@@ -38,6 +38,12 @@ class RoleSeeder extends Seeder
                 'permissions' => ['decide_plugins', 'view_all_projects'],
                 'is_system' => true,
             ],
+            [
+                'key' => 'ceo',
+                'label_ar' => 'المدير التنفيذي',
+                'permissions' => array_keys(Role::PERMISSIONS),
+                'is_system' => false,
+            ],
         ];
 
         foreach ($roles as $role) {
