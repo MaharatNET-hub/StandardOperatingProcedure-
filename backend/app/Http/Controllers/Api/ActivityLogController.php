@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
@@ -14,7 +13,7 @@ class ActivityLogController extends Controller
         $query = ActivityLog::query()->with(['user:id,name', 'project:id,name']);
 
         $user = $request->user();
-        if ($user->role === User::ROLE_DEVELOPER) {
+        if (! $user->hasPermission('view_all_projects')) {
             $query->whereHas('project.developers', fn ($q) => $q->where('users.id', $user->id));
         }
 

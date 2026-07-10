@@ -35,7 +35,7 @@ async function upload(event) {
     })
     await load()
   } catch (e) {
-    error.value = e.response?.data?.message || 'تعذر تحليل الملف — تأكد أنه تصدير Internal > HTML من Screaming Frog.'
+    error.value = e.response?.data?.message || 'تعذر تحليل الملف — تأكد أنه تصدير Internal (All أو HTML) من Screaming Frog.'
   } finally {
     uploading.value = false
     event.target.value = ''
@@ -54,10 +54,12 @@ onMounted(load)
     <div class="bg-indigo-50 text-indigo-900 text-sm rounded-xl p-4 mb-5 space-y-1">
       <p class="font-medium">استيراد تقرير Screaming Frog</p>
       <p>
-        سوّي الفحص على Screaming Frog متل العادة، بعدين من تبويب <strong>Internal</strong> اختر فلتر <strong>HTML</strong> واضغط
-        <strong>Export</strong> لتصدير CSV، وارفعه هون. النظام بيفحص تلقائياً: عدد H1، وسم noindex، Canonical الذاتي، الروابط
-        المكسورة (404)، التحويلات المؤقتة (302)، طول Title/Meta Description وتكرارها، والمحتوى المكرر — وبيحدّث بنود قائمة
-        التحقق المطابقة (قسم 4) تلقائياً.
+        سوّي الفحص على Screaming Frog متل العادة، بعدين من تبويب <strong>Internal</strong> اختر فلتر <strong>All</strong>
+        (يشمل HTML وCSS وJS والصور والخطوط وكل الملفات) واضغط <strong>Export</strong> لتصدير CSV، وارفعه هون. فلتر
+        <strong>HTML</strong> لسا مدعوم لو بدك فحص أسرع بدون الأصول. النظام بيفحص تلقائياً: عدد H1، وسم noindex، Canonical
+        الذاتي، الروابط المكسورة (على كل أنواع الملفات)، التحويلات المؤقتة، طول Title/Meta Description وتكرارها، المحتوى
+        المكرر، أحجام الصور، وعدد الإضافات المكتشفة من روابط wp-content/plugins — وبيحدّث بنود قائمة التحقق المطابقة (الأقسام 3
+        و4 و5) تلقائياً.
       </p>
     </div>
 

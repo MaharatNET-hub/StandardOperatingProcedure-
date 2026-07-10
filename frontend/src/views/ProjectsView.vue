@@ -131,7 +131,7 @@ async function deleteProject() {
 
 onMounted(() => {
   loadProjects()
-  if (auth.isAdmin) loadUsers()
+  if (auth.canManageProjects) loadUsers()
 })
 </script>
 
@@ -140,7 +140,7 @@ onMounted(() => {
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-slate-900">المشاريع</h1>
       <button
-        v-if="auth.isAdmin"
+        v-if="auth.canManageProjects"
         class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2 transition"
         @click="openCreate"
       >
@@ -163,7 +163,7 @@ onMounted(() => {
         <option value="approved">معتمد</option>
         <option value="delivered">تم التسليم</option>
       </select>
-      <select v-if="auth.isAdmin" v-model="filters.developer_id" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <select v-if="auth.canManageProjects" v-model="filters.developer_id" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
         <option value="">كل المبرمجين</option>
         <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
       </select>
@@ -180,7 +180,7 @@ onMounted(() => {
             <th class="text-right px-4 py-3 font-medium">المرحلة الحالية</th>
             <th class="text-right px-4 py-3 font-medium">التحقق</th>
             <th class="text-right px-4 py-3 font-medium">الحالة</th>
-            <th v-if="auth.isAdmin" class="text-right px-4 py-3 font-medium">إجراءات</th>
+            <th v-if="auth.canManageProjects" class="text-right px-4 py-3 font-medium">إجراءات</th>
           </tr>
         </thead>
         <tbody>
@@ -201,7 +201,7 @@ onMounted(() => {
                 {{ statusLabels[p.status] || p.status }}
               </span>
             </td>
-            <td v-if="auth.isAdmin" class="px-4 py-3" @click.stop>
+            <td v-if="auth.canManageProjects" class="px-4 py-3" @click.stop>
               <div class="flex gap-3 text-xs">
                 <button class="text-indigo-600 hover:underline" @click="openEdit(p)">تعديل</button>
                 <button class="text-red-500 hover:underline" @click="confirmDelete(p)">حذف</button>

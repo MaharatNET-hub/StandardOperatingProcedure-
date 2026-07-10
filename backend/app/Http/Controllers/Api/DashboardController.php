@@ -14,7 +14,7 @@ class DashboardController extends Controller
     {
         $query = Project::query();
         $user = $request->user();
-        if ($user->role === \App\Models\User::ROLE_DEVELOPER) {
+        if (! $user->hasPermission('view_all_projects')) {
             $query->whereHas('developers', fn ($q) => $q->where('users.id', $user->id));
         }
 

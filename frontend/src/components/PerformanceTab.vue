@@ -153,7 +153,7 @@ onMounted(load)
       <p v-if="runError" class="text-sm text-red-600 mt-3">
         {{ runError }}
         <button
-          v-if="runError.includes('مفتاح') && auth.isAdmin"
+          v-if="runError.includes('مفتاح') && auth.canManageSettings"
           class="text-indigo-600 hover:underline"
           @click="router.push({ name: 'settings' })"
         >
@@ -179,7 +179,7 @@ onMounted(load)
           </span>
           <div class="flex items-center gap-3">
             <span class="text-xs text-slate-400">{{ new Date(r.measured_at).toLocaleDateString('ar') }}</span>
-            <button v-if="auth.isAdmin" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeReport(r)">
+            <button v-if="auth.canManageProjects" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeReport(r)">
               حذف
             </button>
           </div>

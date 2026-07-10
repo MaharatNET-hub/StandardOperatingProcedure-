@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +21,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', 'in:admin,developer,qa_reviewer,it_specialist'],
+            'role' => ['required', 'exists:roles,key'],
         ]);
 
         $user = User::create([
@@ -37,12 +38,14 @@ class UserController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'email', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['sometimes', 'in:admin,developer,qa_reviewer,it_specialist'],
+            'role' => ['sometimes', 'exists:roles,key'],
         ]);
 
-        if (isset($data['role']) && $data['role'] !== User::ROLE_ADMIN
-            && $user->isAdmin() && $user->id === $request->user()->id) {
-            abort(422, 'لا يمكنك سحب صلاحية المدير عن حسابك الخاص.');
+        if (isset($data['role']) && $data['role'] !== $user->role
+            && $user->id === $request->user()->id
+            && $user->hasPermission('manage_users')
+            && $this->usersWithPermission('manage_users', excludeUserId: $user->id) === 0) {
+            abort(422, 'لا يمكنك سحب صلاحية إدارة الأعضاء عن حسابك الخاص وأنت آخر من يملكها.');
         }
 
         if (! empty($data['password'])) {
@@ -62,12 +65,27 @@ class UserController extends Controller
             abort(422, 'لا يمكنك حذف حسابك الخاص.');
         }
 
-        if ($user->isAdmin() && User::where('role', User::ROLE_ADMIN)->count() <= 1) {
-            abort(422, 'لا يمكن حذف آخر حساب مدير في النظام.');
+        if ($user->hasPermission('manage_users') && $this->usersWithPermission('manage_users', excludeUserId: $user->id) === 0) {
+            abort(422, 'لا يمكن حذف آخر عضو يملك صلاحية إدارة الأعضاء في النظام.');
         }
 
         $user->delete();
 
         return response()->json(['message' => 'تم حذف العضو.']);
+    }
+
+    /**
+     * Count users (excluding the given one) whose role grants the given permission.
+     */
+    private function usersWithPermission(string $permission, ?int $excludeUserId = null): int
+    {
+        $roleKeys = Role::query()
+            ->get(['key', 'permissions'])
+            ->filter(fn (Role $role) => in_array($permission, $role->permissions ?? [], true))
+            ->pluck('key');
+
+        return User::whereIn('role', $roleKeys)
+            ->when($excludeUserId, fn ($query) => $query->where('id', '!=', $excludeUserId))
+            ->count();
     }
 }

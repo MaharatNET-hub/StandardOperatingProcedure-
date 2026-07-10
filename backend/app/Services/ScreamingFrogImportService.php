@@ -31,6 +31,8 @@ class ScreamingFrogImportService
             $this->checkTemporaryRedirects($rows),
             $this->checkTitleAndMeta($rows),
             $this->checkDuplicateContent($rows),
+            $this->checkImageSizes($rows),
+            $this->checkPluginCount($rows),
         ];
 
         return [
@@ -111,6 +113,23 @@ class ScreamingFrogImportService
         return null;
     }
 
+    /**
+     * True when the row's "Content Type" is HTML, or when no Content Type
+     * column exists at all (e.g. an "Internal > HTML" export, where every
+     * row is implicitly HTML). Used to gate checks that only make sense for
+     * HTML documents (H1, canonical, title/meta, duplicate content) now that
+     * "Internal > All" exports mix in CSS/JS/images/fonts/etc.
+     */
+    private function isHtml(array $row): bool
+    {
+        $contentType = $this->col($row, 'content type');
+        if ($contentType === null) {
+            return true;
+        }
+
+        return stripos($contentType, 'html') !== false;
+    }
+
     private function make(string $key, string $categoryCode, int $order, string $label, bool $pass, string $summary, array $affected): array
     {
         return [
@@ -131,7 +150,7 @@ class ScreamingFrogImportService
         foreach ($rows as $row) {
             $address = $this->col($row, 'address');
             $statusCode = $this->col($row, 'status code');
-            if (! $address || $statusCode !== '200') {
+            if (! $address || $statusCode !== '200' || ! $this->isHtml($row)) {
                 continue;
             }
             $h1First = $this->col($row, 'h1-1', 'h1');
@@ -158,7 +177,7 @@ class ScreamingFrogImportService
         foreach ($rows as $row) {
             $address = $this->col($row, 'address');
             $status = $this->col($row, 'indexability status', 'indexability status 1');
-            if ($address && $status && stripos($status, 'noindex') !== false) {
+            if ($address && $status && $this->isHtml($row) && stripos($status, 'noindex') !== false) {
                 $affected[] = $address;
             }
         }
@@ -177,7 +196,7 @@ class ScreamingFrogImportService
         foreach ($rows as $row) {
             $address = $this->col($row, 'address');
             $statusCode = $this->col($row, 'status code');
-            if (! $address || $statusCode !== '200') {
+            if (! $address || $statusCode !== '200' || ! $this->isHtml($row)) {
                 continue;
             }
             $canonical = $this->col($row, 'canonical link element 1', 'canonical');
@@ -243,7 +262,7 @@ class ScreamingFrogImportService
         foreach ($rows as $row) {
             $address = $this->col($row, 'address');
             $statusCode = $this->col($row, 'status code');
-            if (! $address || $statusCode !== '200') {
+            if (! $address || $statusCode !== '200' || ! $this->isHtml($row)) {
                 continue;
             }
 
@@ -298,7 +317,7 @@ class ScreamingFrogImportService
         foreach ($rows as $row) {
             $hash = $this->col($row, 'hash');
             $address = $this->col($row, 'address');
-            if ($hash && $address) {
+            if ($hash && $address && $this->isHtml($row)) {
                 $hasHashColumn = true;
                 $byHash[$hash][] = $address;
             }
@@ -320,6 +339,78 @@ class ScreamingFrogImportService
             empty($affected),
             empty($affected) ? 'لا صفحات متطابقة المحتوى.' : count($affected).' مجموعة صفحات متطابقة المحتوى.',
             $affected
+        );
+    }
+
+    private function checkImageSizes(array $rows): array
+    {
+        $affected = [];
+        $checkedAny = false;
+        $heroLimitBytes = 200 * 1024;
+        $normalLimitBytes = 100 * 1024;
+
+        foreach ($rows as $row) {
+            $contentType = $this->col($row, 'content type');
+            if (! $contentType || stripos($contentType, 'image') === false) {
+                continue;
+            }
+
+            $address = $this->col($row, 'address');
+            $size = $this->col($row, 'size', 'size (bytes)', 'content length');
+            if (! $address || $size === null || ! is_numeric($size)) {
+                continue;
+            }
+
+            $checkedAny = true;
+            $bytes = (int) $size;
+            $isHero = stripos($address, 'hero') !== false;
+            $limit = $isHero ? $heroLimitBytes : $normalLimitBytes;
+
+            if ($bytes > $limit) {
+                $affected[] = sprintf('%s — %s KB (الحد %s KB)', $address, round($bytes / 1024), round($limit / 1024));
+            }
+        }
+
+        if (! $checkedAny) {
+            return [];
+        }
+
+        return $this->make(
+            'image_sizes', '5.1', 3, 'أحجام الصور ضمن الحدود القصوى (Hero < 200KB، عادية < 100KB)',
+            empty($affected),
+            empty($affected) ? 'كل الصور ضمن الحدود القصوى المسموحة.' : count($affected).' صورة تتجاوز الحد الأقصى لحجمها.',
+            $affected
+        );
+    }
+
+    private function checkPluginCount(array $rows): array
+    {
+        $plugins = [];
+
+        foreach ($rows as $row) {
+            $address = $this->col($row, 'address');
+            if (! $address) {
+                continue;
+            }
+
+            if (preg_match('#/wp-content/plugins/([^/]+)/#i', $address, $matches)) {
+                $plugins[$matches[1]] = true;
+            }
+        }
+
+        if (empty($plugins)) {
+            return [];
+        }
+
+        $pluginNames = array_keys($plugins);
+        sort($pluginNames);
+        $count = count($pluginNames);
+
+        return $this->make(
+            'plugin_count', '3.4', 4, 'عدد الإضافات النهائي أقل من 10',
+            $count < 10,
+            $count.' إضافة تم رصدها من روابط الأصول (wp-content/plugins).',
+            $pluginNames
         );
     }
 }

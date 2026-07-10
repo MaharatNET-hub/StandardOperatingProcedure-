@@ -21,7 +21,7 @@ class ProjectController extends Controller
             ]);
 
         $user = $request->user();
-        if ($user->role === \App\Models\User::ROLE_DEVELOPER) {
+        if (! $user->hasPermission('view_all_projects')) {
             $query->whereHas('developers', fn ($q) => $q->where('users.id', $user->id));
         }
 
@@ -141,8 +141,8 @@ class ProjectController extends Controller
 
     public function destroy(Request $request, Project $project)
     {
-        if (! $request->user()->isAdmin()) {
-            abort(403, 'حذف المشاريع متاح للمدير فقط.');
+        if (! $request->user()->hasPermission('manage_projects')) {
+            abort(403, 'حذف المشاريع متاح لمن يملك صلاحية إدارة المشاريع فقط.');
         }
 
         $name = $project->name;
@@ -156,7 +156,7 @@ class ProjectController extends Controller
     private function authorizeProjectAccess(Request $request, Project $project): void
     {
         $user = $request->user();
-        if ($user->role === \App\Models\User::ROLE_DEVELOPER
+        if (! $user->hasPermission('view_all_projects')
             && ! $project->developers()->where('users.id', $user->id)->exists()) {
             abort(403, 'غير مصرح لك بالوصول إلى هذا المشروع.');
         }

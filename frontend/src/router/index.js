@@ -15,9 +15,10 @@ const routes = [
       { path: '', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
       { path: 'projects', name: 'projects', component: () => import('../views/ProjectsView.vue') },
       { path: 'projects/:id', name: 'project-detail', component: () => import('../views/ProjectDetailView.vue'), props: true },
-      { path: 'team', name: 'team', component: () => import('../views/TeamView.vue'), meta: { roles: ['admin'] } },
-      { path: 'checklist-template', name: 'checklist-template', component: () => import('../views/ChecklistTemplateView.vue'), meta: { roles: ['admin'] } },
-      { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { roles: ['admin'] } },
+      { path: 'team', name: 'team', component: () => import('../views/TeamView.vue'), meta: { permission: 'manage_users' } },
+      { path: 'roles', name: 'roles', component: () => import('../views/RolesView.vue'), meta: { permission: 'manage_roles' } },
+      { path: 'checklist-template', name: 'checklist-template', component: () => import('../views/ChecklistTemplateView.vue'), meta: { permission: 'manage_checklist_template' } },
+      { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { permission: 'manage_settings' } },
       { path: 'activity-log', name: 'activity-log', component: () => import('../views/ActivityLogView.vue') },
     ],
   },
@@ -38,7 +39,7 @@ router.beforeEach((to) => {
   if (to.meta.public && auth.isAuthenticated && to.name === 'login') {
     return { name: 'dashboard' }
   }
-  if (to.meta.roles && !to.meta.roles.includes(auth.role)) {
+  if (to.meta.permission && !auth.hasPermission(to.meta.permission)) {
     return { name: 'dashboard' }
   }
   return true

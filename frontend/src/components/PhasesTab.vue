@@ -19,7 +19,7 @@ const statusColors = {
   completed: 'bg-emerald-100 text-emerald-700',
 }
 
-const canManage = computed(() => auth.isAdmin || auth.isDeveloper)
+const canManage = computed(() => auth.canManageProjects || auth.isDeveloper)
 
 async function setStatus(phase, status) {
   await api.patch(`/projects/${props.project.id}/phases/${phase.id}`, { status })
