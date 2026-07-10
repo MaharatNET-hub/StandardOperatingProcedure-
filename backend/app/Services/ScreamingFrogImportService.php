@@ -33,6 +33,7 @@ class ScreamingFrogImportService
             $this->checkDuplicateContent($rows),
             $this->checkImageSizes($rows),
             $this->checkPluginCount($rows),
+            $this->checkTranslationCompleteness($rows),
         ];
 
         return [
@@ -411,6 +412,82 @@ class ScreamingFrogImportService
             $count < 10,
             $count.' إضافة تم رصدها من روابط الأصول (wp-content/plugins).',
             $pluginNames
+        );
+    }
+
+    /**
+     * Objective proxy checks for section 5.2 (bilingual completeness).
+     * Requires the crawl to include a Custom Extraction column with the
+     * page's visible text (see SeoAuditTab instructions) — without it this
+     * check is silently skipped. Cannot judge translation *quality*, only:
+     * (a) leftover untranslated text in the wrong language, and
+     * (b) known common mistranslations from the SOP glossary.
+     */
+    private function checkTranslationCompleteness(array $rows): array
+    {
+        $textColumnCandidates = [
+            'bodytext 1', 'bodytext', 'body text 1', 'body text',
+            'extracted text 1', 'extracted text', 'custom 1', 'custom extraction 1',
+        ];
+
+        // Common WordPress/WooCommerce mistranslations called out explicitly in the SOP.
+        $knownWrongTerms = [
+            'الأمنيات' => 'المفضلة (Wishlist)',
+        ];
+        $leftoverEnglishTerms = [
+            'Wishlist', 'Add to Cart', 'Checkout', 'Submit', 'Sign in', 'Sign up', 'Log in', 'Log out', 'My Account',
+        ];
+
+        $hasTextColumn = false;
+        $affected = [];
+
+        foreach ($rows as $row) {
+            $address = $this->col($row, 'address');
+            $statusCode = $this->col($row, 'status code');
+            if (! $address || $statusCode !== '200' || ! $this->isHtml($row)) {
+                continue;
+            }
+
+            $text = $this->col($row, ...$textColumnCandidates);
+            if ($text === null || trim($text) === '') {
+                continue;
+            }
+            $hasTextColumn = true;
+
+            foreach ($knownWrongTerms as $wrong => $correct) {
+                if (mb_stripos($text, $wrong) !== false) {
+                    $affected[] = "{$address} — استُخدمت \"{$wrong}\" بدل \"{$correct}\"";
+                }
+            }
+
+            $expectEnglish = (bool) preg_match('#/en(/|$)#i', $address);
+            $latinLetters = preg_match_all('/[A-Za-z]/', $text);
+            $arabicLetters = preg_match_all('/\p{Arabic}/u', $text);
+            $totalLetters = $latinLetters + $arabicLetters;
+
+            if (! $expectEnglish) {
+                foreach ($leftoverEnglishTerms as $term) {
+                    if (preg_match('/\b'.preg_quote($term, '/').'\b/i', $text)) {
+                        $affected[] = "{$address} — نص إنكليزي غير مترجم: \"{$term}\"";
+                    }
+                }
+                if ($totalLetters > 40 && ($latinLetters / $totalLetters) > 0.3) {
+                    $affected[] = "{$address} — نسبة كبيرة من النص لسا إنكليزي (".round($latinLetters / $totalLetters * 100).'%)';
+                }
+            } elseif ($totalLetters > 40 && ($arabicLetters / $totalLetters) > 0.3) {
+                $affected[] = "{$address} — نسبة كبيرة من النص لسا عربي على صفحة إنكليزية (".round($arabicLetters / $totalLetters * 100).'%)';
+            }
+        }
+
+        if (! $hasTextColumn) {
+            return [];
+        }
+
+        return $this->make(
+            'translation_completeness', '5.2', 2, 'الترجمة كاملة بين اللغتين — لا نص متبقٍ بلغة خاطئة ولا مصطلحات مترجمة خطأ',
+            empty($affected),
+            empty($affected) ? 'لا نص متبقٍ بلغة خاطئة، ولا مصطلحات من قائمة الأخطاء الشائعة.' : count($affected).' مشكلة ترجمة مكتشفة.',
+            $affected
         );
     }
 }

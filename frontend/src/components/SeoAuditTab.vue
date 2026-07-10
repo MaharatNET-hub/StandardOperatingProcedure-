@@ -61,6 +61,13 @@ onMounted(load)
         المكرر، أحجام الصور، وعدد الإضافات المكتشفة من روابط wp-content/plugins — وبيحدّث بنود قائمة التحقق المطابقة (الأقسام 3
         و4 و5) تلقائياً.
       </p>
+      <p class="pt-2 border-t border-indigo-100 mt-2">
+        <strong>فحص اكتمال الترجمة (اختياري):</strong> لو الموقع بلغتين (عربي/إنكليزي)، فعّل من
+        <strong>Configuration → Custom → Extraction</strong> استخراج باسم <strong>BodyText</strong> بنوع
+        <strong>Extract Text</strong> وXPath <code>//body</code>، وأعد الزحف قبل التصدير. النظام رح يفحص كل صفحة عربي
+        (الروابط اللي مش فيها <code>/en/</code>) وينبّهك على نص إنكليزي متبقٍ (زي "Checkout" أو "Wishlist" بدون ترجمة) أو
+        مصطلحات مترجمة غلط (متل "الأمنيات" بدل "المفضلة"). بدون هالإعداد بيتخطى النظام هذا الفحص تلقائياً.
+      </p>
     </div>
 
     <div class="flex items-center gap-3 mb-6">
