@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
+use App\Http\Controllers\Api\SeoAuditController;
 use App\Http\Controllers\Api\QaReviewController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SignoffController;
@@ -47,6 +48,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('projects', ProjectController::class);
     Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
+
+    Route::get('/projects/{project}/seo-audits', [SeoAuditController::class, 'index']);
+    Route::post('/projects/{project}/seo-audits', [SeoAuditController::class, 'store']);
 
     Route::patch('/projects/{project}/phases/{phase}', [ProjectPhaseController::class, 'update']);
 

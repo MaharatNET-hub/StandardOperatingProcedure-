@@ -78,6 +78,11 @@ class Project extends Model
         return $this->hasMany(PerformanceReport::class);
     }
 
+    public function seoAudits(): HasMany
+    {
+        return $this->hasMany(SeoAudit::class);
+    }
+
     public function qaReviews(): HasMany
     {
         return $this->hasMany(QaReview::class);
