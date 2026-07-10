@@ -83,7 +83,10 @@ onMounted(async () => {
         </div>
 
         <div class="md:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
-          <h2 class="font-semibold text-slate-900 mb-3">آخر النشاطات</h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-slate-900">آخر النشاطات</h2>
+            <router-link :to="{ name: 'activity-log' }" class="text-xs text-indigo-600 hover:underline">عرض السجل كاملاً</router-link>
+          </div>
           <ul class="space-y-3 max-h-96 overflow-y-auto">
             <li v-for="log in stats.recent_activity" :key="log.id" class="text-sm border-b border-slate-100 pb-2 last:border-0">
               <div class="flex justify-between">

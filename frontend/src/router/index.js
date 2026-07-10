@@ -18,6 +18,7 @@ const routes = [
       { path: 'team', name: 'team', component: () => import('../views/TeamView.vue'), meta: { roles: ['admin'] } },
       { path: 'checklist-template', name: 'checklist-template', component: () => import('../views/ChecklistTemplateView.vue'), meta: { roles: ['admin'] } },
       { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { roles: ['admin'] } },
+      { path: 'activity-log', name: 'activity-log', component: () => import('../views/ActivityLogView.vue') },
     ],
   },
 ]

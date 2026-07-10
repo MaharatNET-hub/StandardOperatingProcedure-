@@ -25,7 +25,23 @@ class ProjectController extends Controller
             $query->whereHas('developers', fn ($q) => $q->where('users.id', $user->id));
         }
 
-        return $query->latest()->paginate(15);
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('developer_id')) {
+            $developerId = $request->integer('developer_id');
+            $query->whereHas('developers', fn ($q) => $q->where('users.id', $developerId));
+        }
+
+        if ($request->filled('search')) {
+            $search = '%'.$request->string('search').'%';
+            $query->where(fn ($q) => $q->where('name', 'like', $search)->orWhere('client_name', 'like', $search));
+        }
+
+        $perPage = min($request->integer('per_page', 15), 100);
+
+        return $query->latest()->paginate($perPage)->withQueryString();
     }
 
     public function store(Request $request)

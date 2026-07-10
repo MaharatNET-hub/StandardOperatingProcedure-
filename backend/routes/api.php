@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistCategoryController;
 use App\Http\Controllers\Api\ChecklistController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\PerformanceReportController;
 use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPhaseController;
+use App\Http\Controllers\Api\ProjectReportController;
 use App\Http\Controllers\Api\QaReviewController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SignoffController;
@@ -25,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/tools', [ToolController::class, 'index']);
+    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
     Route::get('/settings', [SettingController::class, 'show'])->middleware('role:admin');
     Route::put('/settings', [SettingController::class, 'update'])->middleware('role:admin');
@@ -43,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin');
 
     Route::apiResource('projects', ProjectController::class);
+    Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
 
     Route::patch('/projects/{project}/phases/{phase}', [ProjectPhaseController::class, 'update']);
 

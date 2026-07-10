@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
@@ -15,6 +15,9 @@ const editingProject = ref(null)
 const saving = ref(false)
 const error = ref('')
 const deleting = ref(null)
+
+const filters = ref({ search: '', status: '', developer_id: '' })
+let searchDebounce = null
 
 const emptyForm = () => ({
   name: '',
@@ -45,10 +48,23 @@ const statusColors = {
 
 async function loadProjects() {
   loading.value = true
-  const { data } = await api.get('/projects')
+  const params = {}
+  if (filters.value.search) params.search = filters.value.search
+  if (filters.value.status) params.status = filters.value.status
+  if (filters.value.developer_id) params.developer_id = filters.value.developer_id
+  const { data } = await api.get('/projects', { params })
   projects.value = data.data
   loading.value = false
 }
+
+watch(
+  () => filters.value.search,
+  () => {
+    clearTimeout(searchDebounce)
+    searchDebounce = setTimeout(loadProjects, 350)
+  },
+)
+watch([() => filters.value.status, () => filters.value.developer_id], loadProjects)
 
 async function loadUsers() {
   const { data } = await api.get('/users')
@@ -130,6 +146,27 @@ onMounted(() => {
       >
         + مشروع جديد
       </button>
+    </div>
+
+    <div class="flex flex-wrap gap-3 mb-4">
+      <input
+        v-model="filters.search"
+        type="text"
+        placeholder="بحث باسم المشروع أو العميل..."
+        class="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+      />
+      <select v-model="filters.status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">كل الحالات</option>
+        <option value="in_progress">قيد التنفيذ</option>
+        <option value="in_review">قيد مراجعة الجودة</option>
+        <option value="changes_requested">طلب تعديلات</option>
+        <option value="approved">معتمد</option>
+        <option value="delivered">تم التسليم</option>
+      </select>
+      <select v-if="auth.isAdmin" v-model="filters.developer_id" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">كل المبرمجين</option>
+        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+      </select>
     </div>
 
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
