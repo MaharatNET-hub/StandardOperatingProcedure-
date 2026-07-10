@@ -10,12 +10,20 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.token,
     role: (state) => state.user?.role,
+    permissions: (state) => state.user?.permissions || [],
     isAdmin: (state) => state.user?.role === 'admin',
     isQaReviewer: (state) => state.user?.role === 'qa_reviewer',
     isItSpecialist: (state) => state.user?.role === 'it_specialist',
     isDeveloper: (state) => state.user?.role === 'developer',
-    canReview: (state) => ['admin', 'qa_reviewer'].includes(state.user?.role),
-    canDecidePlugins: (state) => ['admin', 'it_specialist'].includes(state.user?.role),
+    hasPermission: (state) => (key) => (state.user?.permissions || []).includes(key),
+    canManageUsers: (state) => (state.user?.permissions || []).includes('manage_users'),
+    canManageRoles: (state) => (state.user?.permissions || []).includes('manage_roles'),
+    canManageProjects: (state) => (state.user?.permissions || []).includes('manage_projects'),
+    viewsAllProjects: (state) => (state.user?.permissions || []).includes('view_all_projects'),
+    canManageChecklistTemplate: (state) => (state.user?.permissions || []).includes('manage_checklist_template'),
+    canManageSettings: (state) => (state.user?.permissions || []).includes('manage_settings'),
+    canReview: (state) => (state.user?.permissions || []).includes('qa_review'),
+    canDecidePlugins: (state) => (state.user?.permissions || []).includes('decide_plugins'),
   },
   actions: {
     hydrate() {
@@ -24,8 +32,19 @@ export const useAuthStore = defineStore('auth', {
       if (token && user) {
         this.token = token
         this.user = JSON.parse(user)
+        this.refreshUser()
       }
       this.ready = true
+    },
+    async refreshUser() {
+      try {
+        const { data } = await api.get('/me')
+        this.user = data
+        localStorage.setItem('sop_user', JSON.stringify(data))
+      } catch {
+        // token likely expired; leave cached user in place until an authenticated
+        // request fails and the interceptor logs the user out.
+      }
     },
     async login(email, password) {
       const { data } = await api.post('/login', { email, password })

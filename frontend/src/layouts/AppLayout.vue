@@ -1,21 +1,29 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import api from '../lib/api'
 
 const auth = useAuthStore()
 const router = useRouter()
 
-const roleLabels = {
-  admin: 'مدير / CTO',
-  developer: 'مبرمج',
-  qa_reviewer: 'مراجع جودة (QA)',
-  it_specialist: 'أخصائي تقنية معلومات',
+const roleLabels = ref({})
+
+async function loadRoleLabels() {
+  try {
+    const { data } = await api.get('/roles')
+    roleLabels.value = Object.fromEntries(data.map((r) => [r.key, r.label_ar]))
+  } catch {
+    // sidebar still works with the raw role key as a fallback
+  }
 }
 
 async function logout() {
   await auth.logout()
   router.push({ name: 'login' })
 }
+
+onMounted(loadRoleLabels)
 </script>
 
 <template>
@@ -54,7 +62,7 @@ async function logout() {
           سجل النشاطات
         </router-link>
         <router-link
-          v-if="auth.isAdmin"
+          v-if="auth.canManageUsers"
           :to="{ name: 'team' }"
           class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
           active-class="bg-indigo-800 text-white"
@@ -62,7 +70,15 @@ async function logout() {
           فريق العمل
         </router-link>
         <router-link
-          v-if="auth.isAdmin"
+          v-if="auth.canManageRoles"
+          :to="{ name: 'roles' }"
+          class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
+          active-class="bg-indigo-800 text-white"
+        >
+          الأدوار والصلاحيات
+        </router-link>
+        <router-link
+          v-if="auth.canManageChecklistTemplate"
           :to="{ name: 'checklist-template' }"
           class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
           active-class="bg-indigo-800 text-white"
@@ -70,7 +86,7 @@ async function logout() {
           إدارة قائمة التحقق
         </router-link>
         <router-link
-          v-if="auth.isAdmin"
+          v-if="auth.canManageSettings"
           :to="{ name: 'settings' }"
           class="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-indigo-900 transition"
           active-class="bg-indigo-800 text-white"

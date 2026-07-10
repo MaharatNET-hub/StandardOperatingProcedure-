@@ -89,7 +89,7 @@ onMounted(load)
                 رفض
               </button>
             </div>
-            <button v-if="auth.isAdmin" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeRequest(r)">
+            <button v-if="auth.canManageProjects" class="text-xs text-slate-400 hover:text-red-500 hover:underline" @click="removeRequest(r)">
               حذف
             </button>
           </div>

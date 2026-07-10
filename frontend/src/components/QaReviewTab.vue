@@ -119,7 +119,7 @@ onMounted(loadReview)
       </table>
     </div>
 
-    <div v-if="project.status === 'approved' && auth.isAdmin" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+    <div v-if="project.status === 'approved' && auth.canManageProjects" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
       <p class="text-sm text-emerald-800">مراجعة الجودة معتمدة. يمكن الآن الاعتماد النهائي وتسليم المشروع للعميل.</p>
       <button
         :disabled="signingOff"

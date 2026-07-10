@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeoAuditController;
 use App\Http\Controllers\Api\QaReviewController;
 use App\Http\Controllers\Api\SettingController;
@@ -30,21 +31,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tools', [ToolController::class, 'index']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
-    Route::get('/settings', [SettingController::class, 'show'])->middleware('role:admin');
-    Route::put('/settings', [SettingController::class, 'update'])->middleware('role:admin');
+    Route::get('/settings', [SettingController::class, 'show'])->middleware('permission:manage_settings');
+    Route::put('/settings', [SettingController::class, 'update'])->middleware('permission:manage_settings');
 
-    Route::get('/checklist-categories', [ChecklistCategoryController::class, 'index'])->middleware('role:admin');
-    Route::post('/checklist-categories', [ChecklistCategoryController::class, 'store'])->middleware('role:admin');
-    Route::patch('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'update'])->middleware('role:admin');
-    Route::delete('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'destroy'])->middleware('role:admin');
-    Route::post('/checklist-categories/{checklistCategory}/items', [ChecklistItemController::class, 'store'])->middleware('role:admin');
-    Route::patch('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'update'])->middleware('role:admin');
-    Route::delete('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'destroy'])->middleware('role:admin');
+    Route::get('/checklist-categories', [ChecklistCategoryController::class, 'index'])->middleware('permission:manage_checklist_template');
+    Route::post('/checklist-categories', [ChecklistCategoryController::class, 'store'])->middleware('permission:manage_checklist_template');
+    Route::patch('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'update'])->middleware('permission:manage_checklist_template');
+    Route::delete('/checklist-categories/{checklistCategory}', [ChecklistCategoryController::class, 'destroy'])->middleware('permission:manage_checklist_template');
+    Route::post('/checklist-categories/{checklistCategory}/items', [ChecklistItemController::class, 'store'])->middleware('permission:manage_checklist_template');
+    Route::patch('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'update'])->middleware('permission:manage_checklist_template');
+    Route::delete('/checklist-items/{checklistItem}', [ChecklistItemController::class, 'destroy'])->middleware('permission:manage_checklist_template');
+
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::get('/permissions', [RoleController::class, 'permissions']);
+    Route::post('/roles', [RoleController::class, 'store'])->middleware('permission:manage_roles');
+    Route::patch('/roles/{role}', [RoleController::class, 'update'])->middleware('permission:manage_roles');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:manage_roles');
 
     Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');
-    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('role:admin');
-    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin');
+    Route::post('/users', [UserController::class, 'store'])->middleware('permission:manage_users');
+    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('permission:manage_users');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:manage_users');
 
     Route::apiResource('projects', ProjectController::class);
     Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
@@ -62,9 +69,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/plugin-requests', [PluginRequestController::class, 'index']);
     Route::post('/projects/{project}/plugin-requests', [PluginRequestController::class, 'store']);
     Route::patch('/plugin-requests/{pluginRequest}/decide', [PluginRequestController::class, 'decide'])
-        ->middleware('role:admin,it_specialist');
+        ->middleware('permission:decide_plugins');
     Route::delete('/plugin-requests/{pluginRequest}', [PluginRequestController::class, 'destroy'])
-        ->middleware('role:admin');
+        ->middleware('permission:manage_projects');
 
     Route::get('/projects/{project}/licenses', [LicenseController::class, 'index']);
     Route::post('/projects/{project}/licenses', [LicenseController::class, 'store']);
@@ -75,17 +82,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{project}/performance-reports', [PerformanceReportController::class, 'store']);
     Route::post('/projects/{project}/performance-reports/run-pagespeed', [PerformanceReportController::class, 'runPageSpeed']);
     Route::delete('/projects/{project}/performance-reports/{performanceReport}', [PerformanceReportController::class, 'destroy'])
-        ->middleware('role:admin');
+        ->middleware('permission:manage_projects');
 
     Route::get('/projects/{project}/qa-reviews', [QaReviewController::class, 'index']);
     Route::get('/projects/{project}/qa-reviews/latest', [QaReviewController::class, 'latest']);
     Route::post('/projects/{project}/qa-reviews', [QaReviewController::class, 'store'])
-        ->middleware('role:admin,qa_reviewer');
+        ->middleware('permission:qa_review');
     Route::patch('/qa-reviews/{qaReview}/items/{qaReviewItem}', [QaReviewController::class, 'updateItem'])
-        ->middleware('role:admin,qa_reviewer');
+        ->middleware('permission:qa_review');
     Route::post('/qa-reviews/{qaReview}/submit', [QaReviewController::class, 'submit'])
-        ->middleware('role:admin,qa_reviewer');
+        ->middleware('permission:qa_review');
 
     Route::post('/projects/{project}/signoffs', [SignoffController::class, 'store'])
-        ->middleware('role:admin');
+        ->middleware('permission:manage_projects');
 });

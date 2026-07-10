@@ -12,7 +12,7 @@ class ProjectReportController extends Controller
     public function pdf(Request $request, Project $project)
     {
         $user = $request->user();
-        if ($user->role === \App\Models\User::ROLE_DEVELOPER
+        if (! $user->hasPermission('view_all_projects')
             && ! $project->developers()->where('users.id', $user->id)->exists()) {
             abort(403, 'غير مصرح لك بالوصول إلى هذا المشروع.');
         }

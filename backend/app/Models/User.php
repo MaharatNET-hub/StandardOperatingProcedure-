@@ -51,6 +51,42 @@ class User extends Authenticatable
         return $this->role === self::ROLE_IT_SPECIALIST;
     }
 
+    /**
+     * Resolve the list of permission keys granted to this user via their role.
+     *
+     * @return array<int, string>
+     */
+    public function resolvedPermissions(): array
+    {
+        $role = Role::query()->where('key', $this->role)->first();
+
+        return $role?->permissions ?? [];
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return in_array($permission, $this->resolvedPermissions(), true);
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        if (empty($permissions)) {
+            return true;
+        }
+
+        return ! empty(array_intersect($permissions, $this->resolvedPermissions()));
+    }
+
+    public function permissions(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: fn () => $this->resolvedPermissions(),
+        );
+    }
+
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class)->withTimestamps();

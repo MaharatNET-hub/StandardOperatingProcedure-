@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const users = ref([])
+const roles = ref([])
 const loading = ref(true)
 const showForm = ref(false)
 const editingUser = ref(null)
@@ -16,17 +17,13 @@ const deleteError = ref('')
 const emptyForm = () => ({ name: '', email: '', password: '', role: 'developer' })
 const form = ref(emptyForm())
 
-const roleLabels = {
-  admin: 'مدير / CTO',
-  developer: 'مبرمج',
-  qa_reviewer: 'مراجع جودة (QA)',
-  it_specialist: 'أخصائي تقنية معلومات',
-}
+const roleLabels = computed(() => Object.fromEntries(roles.value.map((r) => [r.key, r.label_ar])))
 
 async function load() {
   loading.value = true
-  const { data } = await api.get('/users')
-  users.value = data
+  const [usersRes, rolesRes] = await Promise.all([api.get('/users'), api.get('/roles')])
+  users.value = usersRes.data
+  roles.value = rolesRes.data
   loading.value = false
 }
 
@@ -157,11 +154,11 @@ onMounted(load)
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">الدور</label>
             <select v-model="form.role" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-              <option value="developer">مبرمج</option>
-              <option value="qa_reviewer">مراجع جودة (QA)</option>
-              <option value="it_specialist">أخصائي تقنية معلومات</option>
-              <option value="admin">مدير / CTO</option>
+              <option v-for="r in roles" :key="r.key" :value="r.key">{{ r.label_ar }}</option>
             </select>
+            <router-link :to="{ name: 'roles' }" v-if="auth.canManageRoles" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">
+              إدارة الأدوار والصلاحيات
+            </router-link>
           </div>
 
           <p v-if="error" class="text-sm text-red-600">{{ error }}</p>

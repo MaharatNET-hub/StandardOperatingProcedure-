@@ -19,7 +19,7 @@ async function load() {
   loading.value = true
   const [licRes, usersRes] = await Promise.all([
     api.get(`/projects/${props.project.id}/licenses`),
-    auth.isAdmin ? api.get('/users') : Promise.resolve({ data: [] }),
+    auth.canManageProjects ? api.get('/users') : Promise.resolve({ data: [] }),
   ])
   licenses.value = licRes.data
   users.value = usersRes.data
@@ -77,7 +77,7 @@ onMounted(load)
           </div>
           <div v-if="l.renewal_responsible" class="text-xs text-slate-400 mt-1">مسؤول التجديد: {{ l.renewal_responsible.name }}</div>
         </div>
-        <button v-if="auth.isAdmin" class="text-xs text-red-500 hover:underline shrink-0" @click="remove(l)">حذف</button>
+        <button v-if="auth.canManageProjects" class="text-xs text-red-500 hover:underline shrink-0" @click="remove(l)">حذف</button>
       </div>
       <div v-if="!licenses.length" class="text-center text-slate-400 py-8">لا توجد تراخيص مسجّلة.</div>
     </div>
@@ -102,7 +102,7 @@ onMounted(load)
             <label class="block text-sm font-medium text-slate-700 mb-1">تاريخ الانتهاء</label>
             <input v-model="form.expiry_date" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
           </div>
-          <div v-if="auth.isAdmin">
+          <div v-if="auth.canManageProjects">
             <label class="block text-sm font-medium text-slate-700 mb-1">مسؤول التجديد</label>
             <select v-model="form.renewal_responsible_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
               <option value="">—</option>
