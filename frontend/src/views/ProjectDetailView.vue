@@ -15,6 +15,7 @@ const auth = useAuthStore()
 const project = ref(null)
 const loading = ref(true)
 const tab = ref('checklist')
+const exporting = ref(false)
 
 const statusLabels = {
   in_progress: 'قيد التنفيذ',
@@ -47,6 +48,25 @@ async function loadProject() {
   loading.value = false
 }
 
+async function exportPdf() {
+  exporting.value = true
+  try {
+    const response = await api.get(`/projects/${props.id}/report-pdf`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `تقرير-${project.value.name}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('تعذر تصدير التقرير. حاول مرة أخرى.')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(loadProject)
 </script>
 
@@ -69,9 +89,18 @@ onMounted(loadProject)
           </a>
         </p>
       </div>
-      <span class="px-3 py-1.5 rounded-full text-sm font-medium" :class="statusColors[project.status]">
-        {{ statusLabels[project.status] || project.status }}
-      </span>
+      <div class="flex items-center gap-3">
+        <button
+          :disabled="exporting"
+          class="text-sm border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg px-3 py-1.5 disabled:opacity-60"
+          @click="exportPdf"
+        >
+          {{ exporting ? '...جاري التصدير' : 'تصدير تقرير PDF' }}
+        </button>
+        <span class="px-3 py-1.5 rounded-full text-sm font-medium" :class="statusColors[project.status]">
+          {{ statusLabels[project.status] || project.status }}
+        </span>
+      </div>
     </div>
 
     <div class="border-b border-slate-200 mb-6 overflow-x-auto">
