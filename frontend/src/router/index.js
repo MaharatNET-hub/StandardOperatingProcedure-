@@ -20,6 +20,9 @@ const routes = [
       { path: 'checklist-template', name: 'checklist-template', component: () => import('../views/ChecklistTemplateView.vue'), meta: { permission: 'manage_checklist_template' } },
       { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { permission: 'manage_settings' } },
       { path: 'activity-log', name: 'activity-log', component: () => import('../views/ActivityLogView.vue') },
+      { path: 'quotations', name: 'quotations', component: () => import('../views/QuotationsView.vue') },
+      { path: 'quotations/new', name: 'quotation-new', component: () => import('../views/QuotationBuilderView.vue') },
+      { path: 'quotations/:id', name: 'quotation-edit', component: () => import('../views/QuotationBuilderView.vue'), props: true },
     ],
   },
 ]

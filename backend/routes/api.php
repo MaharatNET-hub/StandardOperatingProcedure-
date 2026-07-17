@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
+use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeoAuditController;
 use App\Http\Controllers\Api\QaReviewController;
@@ -95,4 +96,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/projects/{project}/signoffs', [SignoffController::class, 'store'])
         ->middleware('permission:manage_projects');
+
+    Route::post('/technical-analysis/scan', [QuotationController::class, 'scan']);
+    Route::get('/quotations', [QuotationController::class, 'index']);
+    Route::post('/quotations', [QuotationController::class, 'store']);
+    Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
+    Route::patch('/quotations/{quotation}', [QuotationController::class, 'update']);
+    Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy']);
+    Route::get('/quotations/{quotation}/pdf', [QuotationController::class, 'pdf']);
 });
