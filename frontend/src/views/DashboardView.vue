@@ -39,6 +39,23 @@ onMounted(async () => {
   <div class="p-6 md:p-8 max-w-7xl mx-auto">
     <h1 class="text-2xl font-bold text-slate-900 mb-6">لوحة التحكم</h1>
 
+    <router-link
+      :to="{ name: 'quotation-new' }"
+      class="block bg-indigo-950 hover:bg-indigo-900 transition text-white rounded-xl p-5 mb-8"
+    >
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div class="text-xs text-indigo-300 mb-1 tracking-wide">قسم جديد</div>
+          <h2 class="font-semibold text-lg">التحليل الفني وعروض الأسعار</h2>
+          <p class="text-sm text-indigo-200 mt-1">
+            افحص أي رابط موقع (محاكاة Screaming Frog / Wappalyzer) لاستخراج المنصة التقنية ونشاطه التجاري وبنيته التحتية،
+            واحصل على توصية فنية وعرض سعر رسمي بأسلوب Maharat Net جاهز للتحميل كـ PDF.
+          </p>
+        </div>
+        <span class="shrink-0 bg-white text-indigo-950 text-sm font-medium rounded-lg px-4 py-2">+ تحليل موقع جديد</span>
+      </div>
+    </router-link>
+
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
 
     <template v-else-if="stats">
