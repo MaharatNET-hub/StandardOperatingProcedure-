@@ -105,6 +105,9 @@ class QuotationController extends Controller
             'infrastructure' => ['nullable', 'array'],
             'recommended_platform' => ['nullable', 'string', 'max:255'],
             'recommendation_reason' => ['nullable', 'string'],
+            'crawl_summary' => ['nullable', 'array'],
+            'proposed_pages' => ['nullable', 'array'],
+            'proposed_pages.*' => ['string', 'max:255'],
 
             'project_summary' => ['nullable', 'string'],
             'technical_scope' => ['nullable', 'string'],
