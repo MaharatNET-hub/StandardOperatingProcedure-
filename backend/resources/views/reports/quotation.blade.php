@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        @page { margin: 40px 44px; }
-        body { font-family: 'DejaVu Sans', sans-serif; direction: rtl; text-align: right; color: #262220; font-size: 11px; background: #ffffff; }
+        body { font-family: sans-serif; direction: rtl; text-align: right; color: #262220; font-size: 11px; background: #ffffff; }
         h1, h2, h3, p { margin: 0; }
 
         /* Signifier */
@@ -41,7 +40,7 @@
         .summary-card .label { font-size: 9px; color: #8a8378; letter-spacing: 1px; margin-bottom: 6px; }
         .summary-card .value { font-size: 13px; color: #1c1a17; font-weight: bold; }
 
-        .footer { position: fixed; bottom: -20px; left: 0; right: 0; font-size: 8.5px; color: #b3ab9c; text-align: center; }
+        .footer { margin-top: 26px; font-size: 8.5px; color: #b3ab9c; text-align: center; }
         .footer .kicker-line { margin: 0 auto 6px auto; }
     </style>
 </head>

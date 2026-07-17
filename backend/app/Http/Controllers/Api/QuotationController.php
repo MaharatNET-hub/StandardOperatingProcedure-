@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Quotation;
 use App\Services\SiteAnalyzerService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 use RuntimeException;
 
 class QuotationController extends Controller
@@ -76,17 +77,38 @@ class QuotationController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * يستخدم mPDF بدل dompdf لأن mPDF يدعم تشكيل الحروف العربية واتجاه RTL
+     * بشكل تلقائي وصحيح (dompdf يعرض الحروف العربية منفصلة ومعكوسة).
+     */
     public function pdf(Quotation $quotation)
     {
         $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')));
 
-        $pdf = Pdf::loadView('reports.quotation', [
+        $html = view('reports.quotation', [
             'quotation' => $quotation,
             'logoBase64' => $logoBase64,
             'generatedAt' => now(),
-        ])->setPaper('a4');
+        ])->render();
 
-        return $pdf->stream("quotation-{$quotation->id}.pdf");
+        $mpdf = new Mpdf([
+            'format' => 'A4',
+            'margin_left' => 15,
+            'margin_right' => 15,
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+            'default_font' => 'sans-serif',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+            'tempDir' => storage_path('app/mpdf-tmp'),
+        ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output('', Destination::STRING_RETURN), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"quotation-{$quotation->id}.pdf\"",
+        ]);
     }
 
     private function validated(Request $request, ?Quotation $quotation = null): array
