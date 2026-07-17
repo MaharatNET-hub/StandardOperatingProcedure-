@@ -20,6 +20,8 @@ class Quotation extends Model
         'infrastructure',
         'recommended_platform',
         'recommendation_reason',
+        'crawl_summary',
+        'proposed_pages',
         'project_summary',
         'technical_scope',
         'cost_items',
@@ -36,6 +38,8 @@ class Quotation extends Model
         return [
             'detected_signals' => 'array',
             'infrastructure' => 'array',
+            'crawl_summary' => 'array',
+            'proposed_pages' => 'array',
             'cost_items' => 'array',
             'domain_cost' => 'decimal:2',
             'hosting_cost' => 'decimal:2',

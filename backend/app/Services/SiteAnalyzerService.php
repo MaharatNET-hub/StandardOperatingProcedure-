@@ -54,9 +54,28 @@ class SiteAnalyzerService
         'unknown' => 'غير محدد بدقة — يتطلب مراجعة يدوية من الفريق التجاري',
     ];
 
+    /** @var array<string, array<int, string>> الصفحات المقترحة للموقع الجديد حسب طبيعة النشاط */
+    private const BUSINESS_PAGE_TEMPLATES = [
+        'ecommerce' => ['الرئيسية', 'كل المنتجات (تصنيفات وفلترة)', 'صفحة المنتج', 'سلة المشتريات', 'إتمام الشراء والدفع', 'حسابي / تسجيل الدخول', 'من نحن', 'اتصل بنا', 'سياسة الشحن والاستبدال', 'الأسئلة الشائعة'],
+        'restaurant' => ['الرئيسية', 'قائمة الطعام (المنيو)', 'الفروع (خريطة)', 'الطلب أونلاين / التوصيل', 'حجز طاولة', 'من نحن', 'اتصل بنا'],
+        'medical' => ['الرئيسية', 'الأقسام والتخصصات', 'الأطباء والكادر الطبي', 'حجز موعد أونلاين', 'من نحن', 'اتصل بنا وموقع العيادة'],
+        'real_estate' => ['الرئيسية', 'العقارات المعروضة (بحث وفلترة)', 'صفحة تفاصيل العقار', 'أضف عقارك', 'من نحن', 'اتصل بنا'],
+        'education' => ['الرئيسية', 'الدورات / البرامج التدريبية', 'صفحة الدورة والتسجيل', 'المدربون', 'من نحن', 'اتصل بنا'],
+        'blog_news' => ['الرئيسية', 'التصنيفات', 'صفحة المقال', 'عن الموقع', 'اتصل بنا'],
+        'legal' => ['الرئيسية', 'مجالات الممارسة', 'فريق المحامين', 'استشارة أونلاين', 'من نحن', 'اتصل بنا'],
+        'corporate' => ['الرئيسية', 'من نحن', 'خدماتنا', 'أعمالنا / معرض الأعمال', 'المدونة (اختياري)', 'اتصل بنا'],
+        'unknown' => ['الرئيسية', 'من نحن', 'خدماتنا / منتجاتنا', 'اتصل بنا'],
+    ];
+
     public static function businessLabel(?string $type): string
     {
         return self::BUSINESS_LABELS[$type] ?? self::BUSINESS_LABELS['unknown'];
+    }
+
+    /** @return array<int, string> */
+    public static function proposedPages(?string $type): array
+    {
+        return self::BUSINESS_PAGE_TEMPLATES[$type] ?? self::BUSINESS_PAGE_TEMPLATES['unknown'];
     }
 
     public function analyze(string $url): array
@@ -86,6 +105,7 @@ class SiteAnalyzerService
         [$businessType, $businessSummary] = $this->detectBusiness($haystack, $metaTitle, $metaDescription);
         $infrastructure = $this->detectInfrastructure($url, $headers);
         [$recommendedPlatform, $reason] = $this->recommendPlatform($framework, $businessType);
+        $crawlSummary = $this->crawlSite($url, $html, $response->status());
 
         return [
             'url' => $url,
@@ -98,7 +118,160 @@ class SiteAnalyzerService
             'infrastructure' => $infrastructure,
             'recommended_platform' => $recommendedPlatform,
             'recommendation_reason' => $reason,
+            'crawl_summary' => $crawlSummary,
+            'proposed_pages' => self::proposedPages($businessType),
         ];
+    }
+
+    /**
+     * محاكاة مصغّرة لزحف Screaming Frog: يستخرج الروابط الداخلية من الصفحة
+     * الرئيسية، يجلب حتى 12 صفحة إضافية من نفس الدومين بشكل متزامن، ويفحص
+     * كل صفحة (الحالة، H1، Title، Meta Description) لتجميع تقرير سريع.
+     */
+    private function crawlSite(string $baseUrl, string $homepageHtml, int $homepageStatus): array
+    {
+        $links = $this->extractInternalLinks($homepageHtml, $baseUrl, 12);
+
+        $pages = [$baseUrl => ['status' => $homepageStatus, 'html' => $homepageHtml]];
+
+        if (! empty($links)) {
+            try {
+                $responses = Http::pool(fn ($pool) => collect($links)->each(
+                    fn ($link) => $pool->as($link)->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (compatible; MaharatNetAnalyzer/1.0; +https://maharatnet.com)',
+                    ])->timeout(10)->connectTimeout(6)->get($link)
+                ));
+
+                foreach ($links as $link) {
+                    $resp = $responses[$link] ?? null;
+                    if ($resp instanceof \Illuminate\Http\Client\Response) {
+                        $pages[$link] = ['status' => $resp->status(), 'html' => (string) $resp->body()];
+                    } else {
+                        $pages[$link] = ['status' => 0, 'html' => ''];
+                    }
+                }
+            } catch (Throwable $e) {
+                // نكتفي بتحليل الصفحة الرئيسية لو فشل الزحف الموسّع
+            }
+        }
+
+        $brokenLinks = [];
+        $missingTitle = [];
+        $missingMeta = [];
+        $withoutH1 = [];
+        $titles = [];
+
+        foreach ($pages as $pageUrl => $page) {
+            $status = $page['status'];
+            if ($status === 0 || $status >= 400) {
+                $brokenLinks[] = ['url' => $pageUrl, 'status' => $status];
+
+                continue;
+            }
+
+            $pageHtml = $page['html'];
+            $title = $this->extractTag($pageHtml, 'title');
+            $desc = $this->extractMeta($pageHtml, 'description');
+            $h1Count = preg_match_all('#<h1[ >]#i', $pageHtml);
+
+            if (! $title) {
+                $missingTitle[] = $pageUrl;
+            } else {
+                $titles[mb_strtolower($title)][] = $pageUrl;
+            }
+
+            if (! $desc) {
+                $missingMeta[] = $pageUrl;
+            }
+
+            if ($h1Count === 0) {
+                $withoutH1[] = $pageUrl;
+            }
+        }
+
+        $duplicateTitles = [];
+        foreach ($titles as $urls) {
+            if (count($urls) > 1) {
+                $duplicateTitles[] = $urls;
+            }
+        }
+
+        return [
+            'pages_crawled' => count($pages),
+            'broken_links' => $brokenLinks,
+            'missing_title' => $missingTitle,
+            'missing_meta_description' => $missingMeta,
+            'pages_without_h1' => $withoutH1,
+            'duplicate_titles' => $duplicateTitles,
+        ];
+    }
+
+    /** @return array<int, string> */
+    private function extractInternalLinks(string $html, string $baseUrl, int $limit): array
+    {
+        preg_match_all('#href=["\']([^"\']+)["\']#i', $html, $matches);
+        $baseHost = parse_url($baseUrl, PHP_URL_HOST);
+        $skipExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'zip', 'css', 'js', 'ico', 'woff', 'woff2', 'ttf', 'mp4', 'xml', 'json'];
+
+        $links = [];
+        foreach ($matches[1] as $href) {
+            $absolute = $this->resolveUrl($baseUrl, $href);
+            if (! $absolute) {
+                continue;
+            }
+
+            if (parse_url($absolute, PHP_URL_HOST) !== $baseHost) {
+                continue;
+            }
+
+            $path = parse_url($absolute, PHP_URL_PATH) ?? '';
+            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (in_array($extension, $skipExtensions, true)) {
+                continue;
+            }
+
+            $clean = rtrim(strtok($absolute, '#'), '/');
+            if ($clean === '' || $clean === rtrim($baseUrl, '/')) {
+                continue;
+            }
+
+            $links[$clean] = true;
+            if (count($links) >= $limit) {
+                break;
+            }
+        }
+
+        return array_keys($links);
+    }
+
+    private function resolveUrl(string $base, string $href): ?string
+    {
+        $href = trim($href);
+        if ($href === '' || str_starts_with($href, '#')
+            || preg_match('#^(mailto|tel|javascript):#i', $href)) {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $href)) {
+            return $href;
+        }
+
+        $baseParts = parse_url($base);
+        $scheme = $baseParts['scheme'] ?? 'https';
+        $host = $baseParts['host'] ?? '';
+
+        if (str_starts_with($href, '//')) {
+            return "{$scheme}:{$href}";
+        }
+
+        if (str_starts_with($href, '/')) {
+            return "{$scheme}://{$host}{$href}";
+        }
+
+        $basePath = $baseParts['path'] ?? '/';
+        $dir = str_ends_with($basePath, '/') ? $basePath : (dirname($basePath).'/');
+
+        return "{$scheme}://{$host}{$dir}{$href}";
     }
 
     private function normalizeUrl(string $url): string

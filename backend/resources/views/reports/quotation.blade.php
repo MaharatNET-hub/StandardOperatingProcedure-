@@ -111,6 +111,39 @@
         <tr><td class="k">عنوان الصفحة (Title)</td><td class="v">{{ $quotation->meta_title ?? '—' }}</td></tr>
     </table>
 
+    @if ($quotation->crawl_summary)
+        <div class="rule"></div>
+        <div class="section-label">تحليل الزحف (محاكاة Screaming Frog)</div>
+        @php $crawl = $quotation->crawl_summary; @endphp
+        <table class="summary-grid">
+            <tr>
+                <td>
+                    <div class="summary-card">
+                        <div class="label">صفحات تم فحصها</div>
+                        <div class="value">{{ $crawl['pages_crawled'] ?? 0 }}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="summary-card">
+                        <div class="label">روابط مكسورة</div>
+                        <div class="value">{{ count($crawl['broken_links'] ?? []) }}</div>
+                    </div>
+                </td>
+                <td style="padding-left: 0;">
+                    <div class="summary-card">
+                        <div class="label">صفحات بدون H1</div>
+                        <div class="value">{{ count($crawl['pages_without_h1'] ?? []) }}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="kv" style="margin-top: 12px;">
+            <tr><td class="k">صفحات بدون Title</td><td class="v">{{ count($crawl['missing_title'] ?? []) }}</td></tr>
+            <tr><td class="k">صفحات بدون Meta Description</td><td class="v">{{ count($crawl['missing_meta_description'] ?? []) }}</td></tr>
+            <tr><td class="k">عناوين مكررة</td><td class="v">{{ count($crawl['duplicate_titles'] ?? []) }}</td></tr>
+        </table>
+    @endif
+
     <div class="rule"></div>
 
     {{-- التوصية الفنية --}}
@@ -124,6 +157,16 @@
         <div class="rule"></div>
         <div class="section-label">التوصيف التقني للعمل المقترح</div>
         <p class="section-body">{{ $quotation->technical_scope }}</p>
+    @endif
+
+    @if (! empty($quotation->proposed_pages))
+        <div class="rule"></div>
+        <div class="section-label">الصفحات المقترحة للموقع الجديد</div>
+        <table class="kv">
+            @foreach ($quotation->proposed_pages as $i => $page)
+                <tr><td class="k">{{ $i + 1 }}.</td><td class="v">{{ $page }}</td></tr>
+            @endforeach
+        </table>
     @endif
 
     <div class="rule"></div>

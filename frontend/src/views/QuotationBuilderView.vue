@@ -25,11 +25,14 @@ const businessLabels = {
 
 const scanUrl = ref('')
 const analyzed = ref(false)
+const newPageName = ref('')
+const showBrokenLinks = ref(false)
 
 const emptyQuotation = () => ({
   url: '', client_name: '', status: 'draft',
   detected_framework: null, detected_signals: [], meta_title: null, meta_description: null,
   business_type: null, business_summary: null, infrastructure: {}, recommended_platform: null, recommendation_reason: null,
+  crawl_summary: null, proposed_pages: [],
   project_summary: '', technical_scope: '', cost_items: [], currency: 'USD',
   domain_cost: null, hosting_cost: null, hosting_cycle: 'yearly', support_months: 1,
 })
@@ -65,6 +68,16 @@ function addCostItem() {
 }
 function removeCostItem(i) {
   quotation.value.cost_items.splice(i, 1)
+}
+
+function addProposedPage() {
+  const name = newPageName.value.trim()
+  if (!name) return
+  quotation.value.proposed_pages.push(name)
+  newPageName.value = ''
+}
+function removeProposedPage(i) {
+  quotation.value.proposed_pages.splice(i, 1)
 }
 
 async function save() {
@@ -122,11 +135,14 @@ function copyText() {
     `- طبيعة النشاط: ${businessLabels[q.business_type] || '—'}`,
     `- الاستضافة/الحماية: ${q.infrastructure?.cdn_or_firewall || '—'}`,
     '',
+    q.crawl_summary ? `- صفحات تم فحصها: ${q.crawl_summary.pages_crawled ?? 0} — روابط مكسورة: ${(q.crawl_summary.broken_links || []).length} — صفحات بدون H1: ${(q.crawl_summary.pages_without_h1 || []).length}` : null,
+    '',
     'التوصية الفنية:',
     `${q.recommended_platform || '—'}`,
     q.recommendation_reason || '',
     '',
     q.technical_scope ? `التوصيف التقني:\n${q.technical_scope}\n` : null,
+    q.proposed_pages?.length ? `الصفحات المقترحة للموقع الجديد:\n${q.proposed_pages.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n` : null,
     'جدول التكاليف التشغيلية:',
     ...(q.cost_items?.length
       ? q.cost_items.map((i) => `- ${i.name} (${i.type || '—'}) — ${i.price} ${q.currency} / ${cycleLabels[i.cycle] || i.cycle}`)
@@ -208,6 +224,45 @@ onMounted(() => {
           </button>
         </div>
 
+        <div v-if="quotation.crawl_summary" class="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+          <h2 class="font-semibold text-slate-900 mb-1">تحليل الزحف (محاكاة Screaming Frog)</h2>
+          <p class="text-xs text-slate-500 mb-3">فحص سريع لعدد من الصفحات الداخلية المرتبطة بالصفحة الرئيسية.</p>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="text-xs text-slate-500 mb-1">صفحات مفحوصة</div>
+              <div class="text-lg font-bold text-slate-900">{{ quotation.crawl_summary.pages_crawled ?? 0 }}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="text-xs text-slate-500 mb-1">روابط مكسورة</div>
+              <div class="text-lg font-bold" :class="quotation.crawl_summary.broken_links?.length ? 'text-red-600' : 'text-emerald-600'">
+                {{ quotation.crawl_summary.broken_links?.length || 0 }}
+              </div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="text-xs text-slate-500 mb-1">بدون H1</div>
+              <div class="text-lg font-bold text-slate-900">{{ quotation.crawl_summary.pages_without_h1?.length || 0 }}</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="text-xs text-slate-500 mb-1">بدون Title/Meta</div>
+              <div class="text-lg font-bold text-slate-900">
+                {{ (quotation.crawl_summary.missing_title?.length || 0) + (quotation.crawl_summary.missing_meta_description?.length || 0) }}
+              </div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3">
+              <div class="text-xs text-slate-500 mb-1">عناوين مكررة</div>
+              <div class="text-lg font-bold text-slate-900">{{ quotation.crawl_summary.duplicate_titles?.length || 0 }}</div>
+            </div>
+          </div>
+          <button v-if="quotation.crawl_summary.broken_links?.length" class="text-xs text-indigo-600 hover:underline" @click="showBrokenLinks = !showBrokenLinks">
+            {{ showBrokenLinks ? 'إخفاء' : 'عرض' }} الروابط المكسورة
+          </button>
+          <div v-if="showBrokenLinks" class="mt-2 space-y-1">
+            <div v-for="(b, i) in quotation.crawl_summary.broken_links" :key="i" class="text-xs text-slate-600 break-all">
+              {{ b.url }} — <span class="text-red-600">{{ b.status || 'تعذر الوصول' }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white rounded-xl border border-slate-200 p-5 mb-6 space-y-4">
           <h2 class="font-semibold text-slate-900">تقرير العرض (Quotation)</h2>
 
@@ -232,6 +287,31 @@ onMounted(() => {
           <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">التوصيف التقني للعمل المقترح</label>
             <textarea v-model="quotation.technical_scope" rows="4" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="مثال: إعادة بناء الموقع بالكامل على WordPress + Astra Pro، ترحيل المحتوى، تحسين الأداء والـ SEO..."></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-2">الصفحات المقترحة للموقع الجديد</label>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span
+                v-for="(page, i) in quotation.proposed_pages"
+                :key="i"
+                class="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-800 text-xs rounded-full px-3 py-1.5"
+              >
+                {{ page }}
+                <button class="text-indigo-400 hover:text-red-600" @click="removeProposedPage(i)">✕</button>
+              </span>
+              <span v-if="!quotation.proposed_pages.length" class="text-xs text-slate-400">لا توجد صفحات مقترحة بعد.</span>
+            </div>
+            <div class="flex gap-2">
+              <input
+                v-model="newPageName"
+                type="text"
+                placeholder="اسم صفحة إضافية (مثال: المدونة)"
+                class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+                @keyup.enter="addProposedPage"
+              />
+              <button class="text-xs border border-slate-300 hover:bg-slate-50 rounded-lg px-3 py-1.5" @click="addProposedPage">+ إضافة صفحة</button>
+            </div>
           </div>
 
           <div>
