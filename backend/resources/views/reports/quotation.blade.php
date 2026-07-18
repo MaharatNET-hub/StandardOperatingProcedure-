@@ -42,6 +42,18 @@
 
         .footer { margin-top: 26px; font-size: 8.5px; color: #b3ab9c; text-align: center; }
         .footer .kicker-line { margin: 0 auto 6px auto; }
+
+        .screenshot-frame { border: 1px solid #efeadf; padding: 6px; }
+        .screenshot-frame img { width: 100%; }
+        .issue-row td { padding: 6px 0; border-bottom: 1px solid #f1eee7; font-size: 10.5px; vertical-align: top; }
+        .issue-row .issue-label { color: #3c372f; }
+        .issue-row .issue-count { color: #b3452f; font-weight: bold; text-align: left; width: 60px; }
+        .example-list { font-size: 9.5px; color: #8a8378; margin-top: 4px; }
+        .score-value { font-size: 22px; font-weight: bold; }
+        .score-good { color: #3f7d4a; }
+        .score-mid { color: #a9812f; }
+        .score-bad { color: #b3452f; }
+        .audit-reco { background: #faf8f4; border: 1px solid #efeadf; padding: 14px 16px; font-size: 10.5px; color: #3c372f; line-height: 1.8; }
     </style>
 </head>
 <body>
@@ -141,6 +153,86 @@
             <tr><td class="k">صفحات بدون Meta Description</td><td class="v">{{ count($crawl['missing_meta_description'] ?? []) }}</td></tr>
             <tr><td class="k">عناوين مكررة</td><td class="v">{{ count($crawl['duplicate_titles'] ?? []) }}</td></tr>
         </table>
+
+        @php
+            $issueRows = array_filter([
+                ['label' => 'روابط مكسورة (404 أو خطأ خادم)', 'count' => count($crawl['broken_links'] ?? [])],
+                ['label' => 'وسم <head> مكرر', 'count' => count($crawl['duplicate_head_tags'] ?? [])],
+                ['label' => 'وسم <body> مكرر', 'count' => count($crawl['duplicate_body_tags'] ?? [])],
+                ['label' => 'عنوان H1 مفقود', 'count' => count($crawl['pages_without_h1'] ?? [])],
+                ['label' => 'صفحات بحاجة لعنوان H2', 'count' => count($crawl['pages_missing_h2'] ?? [])],
+                ['label' => 'ترتيب عناوين خاطئ (تخطي مستوى)', 'count' => count($crawl['heading_order_issues'] ?? [])],
+                ['label' => 'عنوان الصفحة الرئيسية مطابق لـ H1', 'count' => ($crawl['homepage_title_matches_h1'] ?? false) ? 1 : 0],
+                ['label' => 'صور بدون نص بديل (Alt Text)', 'count' => $crawl['missing_alt_images'] ?? 0],
+                ['label' => 'صور يتجاوز حجمها 100 كيلوبايت', 'count' => count($crawl['large_images'] ?? [])],
+            ], fn ($row) => $row['count'] > 0);
+        @endphp
+
+        @if (! empty($issueRows) || ($crawl['total_images'] ?? 0) > 0)
+            <div class="rule"></div>
+            <div class="section-label">المشاكل الفنية المكتشفة آلياً</div>
+            @if (($crawl['pages_crawled'] ?? 0) > 0 && ($crawl['total_images'] ?? 0) / max($crawl['pages_crawled'], 1) > 10)
+                <p class="section-body" style="margin-bottom: 8px;">
+                    الموقع يحتوي على {{ $crawl['pages_crawled'] }} صفحة مفحوصة و{{ $crawl['total_images'] }} صورة — عدد كبير جداً من الصور مقارنة بعدد الصفحات، ما يسبب بطئاً ملحوظاً بسرعة التحميل.
+                </p>
+            @endif
+            <table>
+                @foreach ($issueRows as $row)
+                    <tr class="issue-row">
+                        <td class="issue-label">{{ $row['label'] }}</td>
+                        <td class="issue-count">{{ $row['count'] }}</td>
+                    </tr>
+                @endforeach
+            </table>
+            @if (! empty($crawl['broken_links']))
+                <div class="example-list">
+                    أمثلة: {{ collect($crawl['broken_links'])->take(5)->map(fn ($b) => $b['url'].' ('.($b['status'] ?: 'تعذر الوصول').')')->implode('، ') }}
+                </div>
+            @endif
+        @endif
+    @endif
+
+    @if ($quotation->homepage_screenshot)
+        <div class="rule"></div>
+        <div class="section-label">لقطة من الصفحة الرئيسية</div>
+        <div class="screenshot-frame">
+            <img src="data:image/png;base64,{{ $quotation->homepage_screenshot }}">
+        </div>
+    @endif
+
+    @php
+        $scoreClass = fn (?int $s) => $s === null ? '' : ($s >= 75 ? 'score-good' : ($s >= 50 ? 'score-mid' : 'score-bad'));
+    @endphp
+    @if ($quotation->ux_score !== null || $quotation->seo_score !== null || $quotation->speed_score !== null)
+        <div class="rule"></div>
+        <div class="section-label">نتيجة التقييم الفني</div>
+        <table class="summary-grid">
+            <tr>
+                <td>
+                    <div class="summary-card">
+                        <div class="label">تجربة المستخدم (UX)</div>
+                        <div class="score-value {{ $scoreClass($quotation->ux_score) }}">{{ $quotation->ux_score !== null ? $quotation->ux_score.'%' : '—' }}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="summary-card">
+                        <div class="label">تحسين محركات البحث (SEO)</div>
+                        <div class="score-value {{ $scoreClass($quotation->seo_score) }}">{{ $quotation->seo_score !== null ? $quotation->seo_score.'%' : '—' }}</div>
+                    </div>
+                </td>
+                <td style="padding-left: 0;">
+                    <div class="summary-card">
+                        <div class="label">سرعة الموقع</div>
+                        <div class="score-value {{ $scoreClass($quotation->speed_score) }}">{{ $quotation->speed_score !== null ? $quotation->speed_score.'%' : '—' }}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        @if ($quotation->audit_recommendation)
+            <div class="audit-reco" style="margin-top: 12px;">
+                <b>نصائح مهارات نت:</b> {{ $quotation->audit_recommendation }}
+            </div>
+        @endif
     @endif
 
     <div class="rule"></div>

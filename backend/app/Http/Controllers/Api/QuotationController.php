@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Quotation;
+use App\Services\PageSpeedService;
 use App\Services\SiteAnalyzerService;
+use App\Services\SiteScreenshotService;
 use Illuminate\Http\Request;
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;
@@ -29,17 +31,39 @@ class QuotationController extends Controller
         return $query->paginate(min($request->integer('per_page', 15), 100))->withQueryString();
     }
 
-    public function scan(Request $request, SiteAnalyzerService $analyzer)
-    {
+    public function scan(
+        Request $request,
+        SiteAnalyzerService $analyzer,
+        SiteScreenshotService $screenshotService,
+        PageSpeedService $pageSpeedService
+    ) {
         $data = $request->validate([
             'url' => ['required', 'string', 'max:2048'],
         ]);
 
         try {
-            return $analyzer->analyze($data['url']);
+            $result = $analyzer->analyze($data['url']);
         } catch (RuntimeException $e) {
             abort(422, $e->getMessage());
         }
+
+        $result['homepage_screenshot'] = $screenshotService->capture($result['url']);
+
+        $speedScore = null;
+        try {
+            $speedScore = $pageSpeedService->analyze($result['url'], 'mobile')['score'];
+        } catch (RuntimeException $e) {
+            // PageSpeed API غير مفعّل بعد — نتجاهل ونكمل بدون درجة سرعة حقيقية
+        }
+        $result['speed_score'] = $speedScore;
+
+        $result['audit_recommendation'] = SiteAnalyzerService::buildAuditRecommendation(
+            $result['ux_score'],
+            $result['seo_score'],
+            $speedScore
+        );
+
+        return $result;
     }
 
     public function store(Request $request)
@@ -130,6 +154,11 @@ class QuotationController extends Controller
             'crawl_summary' => ['nullable', 'array'],
             'proposed_pages' => ['nullable', 'array'],
             'proposed_pages.*' => ['string', 'max:255'],
+            'homepage_screenshot' => ['nullable', 'string'],
+            'ux_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'seo_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'speed_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'audit_recommendation' => ['nullable', 'string'],
 
             'project_summary' => ['nullable', 'string'],
             'technical_scope' => ['nullable', 'string'],
