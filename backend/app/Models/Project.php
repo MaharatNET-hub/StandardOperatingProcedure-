@@ -19,28 +19,86 @@ class Project extends Model
 
     public const STATUS_DELIVERED = 'delivered';
 
+    /** @var array<int, string> مراحل خط سير المشروع التجاري (مستقلة عن status الخاص بسير عمل الجودة/QA) */
+    public const PIPELINE_STAGES = [
+        'new_project', 'information_collection', 'ready_to_start', 'in_progress',
+        'waiting_client', 'waiting_payment', 'waiting_content', 'testing', 'client_review',
+        'changes_requested', 'final_review', 'ready_for_launch', 'live', 'completed', 'paused', 'cancelled',
+    ];
+
+    public const BLOCKERS = [
+        'none', 'waiting_client', 'waiting_developer', 'waiting_payment_gateway', 'waiting_domain',
+        'waiting_hosting', 'waiting_content', 'waiting_logo', 'waiting_product_images', 'other',
+    ];
+
+    public const FEEDBACK_STATUSES = ['none', 'new', 'in_progress', 'completed'];
+
+    public const PROJECT_TYPES = [
+        'ecommerce', 'corporate', 'landing_page', 'portfolio', 'blog',
+        'booking', 'marketplace', 'custom', 'mobile_app', 'other',
+    ];
+
     protected $fillable = [
         'name',
         'client_name',
+        'project_type',
+        'project_description',
+        'current_task',
         'envato_preview_url',
         'site_url',
         'status',
+        'pipeline_stage',
         'current_phase_id',
         'created_by',
+        'primary_developer_id',
         'content_deadline',
+        'start_date',
+        'next_meeting_at',
         'revision_rounds_allowed',
+        'has_domain', 'domain_name', 'domain_login_info', 'domain_purchaser',
+        'has_hosting', 'hosting_provider', 'hosting_login_info', 'hosting_purchaser',
+        'has_logo', 'needs_logo_design', 'design_style', 'website_languages_count', 'primary_language', 'secondary_language',
+        'needs_payment_gateway', 'payment_gateway_type', 'payment_gateway_status', 'has_shipping_company', 'shipping_company_name',
+        'content_ready', 'product_images_ready', 'seo_required', 'seo_status', 'google_analytics_connected', 'search_console_connected',
+        'phone', 'whatsapp', 'social_media_available', 'social_media_login_info',
+        'last_client_update_at', 'next_client_update_at', 'client_update_interval_days',
+        'client_feedback_status', 'client_feedback_notes', 'client_feedback_at',
+        'client_notes', 'internal_notes', 'blocker', 'website_uploaded',
     ];
 
     protected function casts(): array
     {
         return [
             'content_deadline' => 'date',
+            'start_date' => 'date',
+            'next_meeting_at' => 'datetime',
+            'last_client_update_at' => 'datetime',
+            'next_client_update_at' => 'datetime',
+            'client_feedback_at' => 'datetime',
+            'has_domain' => 'boolean',
+            'has_hosting' => 'boolean',
+            'has_logo' => 'boolean',
+            'needs_logo_design' => 'boolean',
+            'needs_payment_gateway' => 'boolean',
+            'has_shipping_company' => 'boolean',
+            'content_ready' => 'boolean',
+            'product_images_ready' => 'boolean',
+            'seo_required' => 'boolean',
+            'google_analytics_connected' => 'boolean',
+            'search_console_connected' => 'boolean',
+            'social_media_available' => 'boolean',
+            'website_uploaded' => 'boolean',
         ];
     }
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function primaryDeveloper(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'primary_developer_id');
     }
 
     public function currentPhase(): BelongsTo

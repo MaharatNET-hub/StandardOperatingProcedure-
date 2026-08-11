@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\PerformanceReportController;
 use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectInsightController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
 use App\Http\Controllers\Api\QuotationController;
@@ -29,6 +30,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/my-priorities', [ProjectInsightController::class, 'myPriorities']);
+    Route::get('/client-follow-ups', [ProjectInsightController::class, 'clientFollowUps']);
     Route::get('/tools', [ToolController::class, 'index']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
@@ -55,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('permission:manage_users');
 
     Route::apiResource('projects', ProjectController::class);
+    Route::post('/projects/{project}/send-client-update', [ProjectController::class, 'sendClientUpdate']);
     Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
 
     Route::get('/projects/{project}/seo-audits', [SeoAuditController::class, 'index']);
