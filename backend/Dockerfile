@@ -6,6 +6,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install pdo pdo_sqlite zip mbstring xml dom simplexml curl bcmath gd \
     && rm -rf /var/lib/apt/lists/*
 
+# Chromium لالتقاط لقطات شاشة حقيقية ضمن قسم "التحليل الفني" — تثبيت غير حرج:
+# لو فشل (مثلاً غير متوفر على هذه النسخة من الصورة)، تُكمل عملية البناء وتُعطَّل
+# اللقطات تلقائياً (SiteScreenshotService يتحقق من وجود الملف التنفيذي).
+RUN apt-get update && apt-get install -y --no-install-recommends chromium \
+    && rm -rf /var/lib/apt/lists/* \
+    || echo "تحذير: تعذر تثبيت Chromium — سيتم تجاوز التقاط لقطات الشاشة"
+
+ENV CHROME_PATH=/usr/bin/chromium
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
@@ -15,7 +24,7 @@ RUN composer install --no-dev --no-interaction --no-scripts --optimize-autoloade
 
 COPY . .
 RUN composer dump-autoload --optimize \
-    && mkdir -p database storage/framework/{cache,sessions,views} storage/logs storage/app/public storage/fonts \
+    && mkdir -p database storage/framework/{cache,sessions,views} storage/logs storage/app/public storage/app/mpdf-tmp storage/fonts \
     && chmod -R 775 storage bootstrap/cache database \
     && php artisan package:discover --ansi
 

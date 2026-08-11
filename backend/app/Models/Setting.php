@@ -9,6 +9,10 @@ class Setting extends Model
 {
     public const KEY_PAGESPEED_API_KEY = 'pagespeed_api_key';
 
+    public const KEY_PRIORITY_WEIGHTS = 'priority_weights';
+
+    public const KEY_PROJECT_TYPE_REQUIREMENTS = 'project_type_requirements';
+
     protected $fillable = ['key', 'value'];
 
     protected function casts(): array

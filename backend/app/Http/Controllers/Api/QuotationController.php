@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Quotation;
+use App\Services\PageSpeedService;
 use App\Services\SiteAnalyzerService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\SiteScreenshotService;
 use Illuminate\Http\Request;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 use RuntimeException;
 
 class QuotationController extends Controller
@@ -28,17 +31,39 @@ class QuotationController extends Controller
         return $query->paginate(min($request->integer('per_page', 15), 100))->withQueryString();
     }
 
-    public function scan(Request $request, SiteAnalyzerService $analyzer)
-    {
+    public function scan(
+        Request $request,
+        SiteAnalyzerService $analyzer,
+        SiteScreenshotService $screenshotService,
+        PageSpeedService $pageSpeedService
+    ) {
         $data = $request->validate([
             'url' => ['required', 'string', 'max:2048'],
         ]);
 
         try {
-            return $analyzer->analyze($data['url']);
+            $result = $analyzer->analyze($data['url']);
         } catch (RuntimeException $e) {
             abort(422, $e->getMessage());
         }
+
+        $result['homepage_screenshot'] = $screenshotService->capture($result['url']);
+
+        $speedScore = null;
+        try {
+            $speedScore = $pageSpeedService->analyze($result['url'], 'mobile')['score'];
+        } catch (RuntimeException $e) {
+            // PageSpeed API غير مفعّل بعد — نتجاهل ونكمل بدون درجة سرعة حقيقية
+        }
+        $result['speed_score'] = $speedScore;
+
+        $result['audit_recommendation'] = SiteAnalyzerService::buildAuditRecommendation(
+            $result['ux_score'],
+            $result['seo_score'],
+            $speedScore
+        );
+
+        return $result;
     }
 
     public function store(Request $request)
@@ -76,17 +101,38 @@ class QuotationController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * يستخدم mPDF بدل dompdf لأن mPDF يدعم تشكيل الحروف العربية واتجاه RTL
+     * بشكل تلقائي وصحيح (dompdf يعرض الحروف العربية منفصلة ومعكوسة).
+     */
     public function pdf(Quotation $quotation)
     {
         $logoBase64 = base64_encode(file_get_contents(resource_path('images/logo.png')));
 
-        $pdf = Pdf::loadView('reports.quotation', [
+        $html = view('reports.quotation', [
             'quotation' => $quotation,
             'logoBase64' => $logoBase64,
             'generatedAt' => now(),
-        ])->setPaper('a4');
+        ])->render();
 
-        return $pdf->stream("quotation-{$quotation->id}.pdf");
+        $mpdf = new Mpdf([
+            'format' => 'A4',
+            'margin_left' => 15,
+            'margin_right' => 15,
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+            'default_font' => 'sans-serif',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+            'tempDir' => storage_path('app/mpdf-tmp'),
+        ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output('', Destination::STRING_RETURN), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"quotation-{$quotation->id}.pdf\"",
+        ]);
     }
 
     private function validated(Request $request, ?Quotation $quotation = null): array
@@ -108,6 +154,11 @@ class QuotationController extends Controller
             'crawl_summary' => ['nullable', 'array'],
             'proposed_pages' => ['nullable', 'array'],
             'proposed_pages.*' => ['string', 'max:255'],
+            'homepage_screenshot' => ['nullable', 'string'],
+            'ux_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'seo_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'speed_score' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'audit_recommendation' => ['nullable', 'string'],
 
             'project_summary' => ['nullable', 'string'],
             'technical_scope' => ['nullable', 'string'],

@@ -78,6 +78,31 @@ class SiteAnalyzerService
         return self::BUSINESS_PAGE_TEMPLATES[$type] ?? self::BUSINESS_PAGE_TEMPLATES['unknown'];
     }
 
+    public static function buildAuditRecommendation(int $ux, int $seo, ?int $speed): string
+    {
+        $scores = array_filter([$ux, $seo, $speed], fn ($s) => $s !== null);
+        $average = $scores ? array_sum($scores) / count($scores) : 0;
+
+        $weakest = 'UX/SEO';
+        if ($seo <= $ux && ($speed === null || $seo <= $speed)) {
+            $weakest = 'SEO';
+        } elseif ($speed !== null && $speed <= $ux && $speed <= $seo) {
+            $weakest = 'السرعة';
+        } elseif ($ux <= $seo) {
+            $weakest = 'تجربة المستخدم';
+        }
+
+        if ($average < 50) {
+            return "الموقع مبني بطريقة فيها مشاكل كبيرة في البنية الأساسية، وأضعف نقطة هي {$weakest}. التوصية: استبدال البنية التحتية للموقع بالكامل والبدء من جديد بدل محاولة الترقيع.";
+        }
+
+        if ($average < 75) {
+            return "الموقع يعمل لكنه بحاجة لتحسينات جوهرية، خصوصاً على صعيد {$weakest}، قبل اعتماده كواجهة تسويقية فعّالة على المدى الطويل.";
+        }
+
+        return 'الموقع بحالة تقنية جيدة بشكل عام؛ التحسينات المطلوبة طفيفة نسبياً ويمكن تنفيذها دون إعادة بناء كاملة.';
+    }
+
     public function analyze(string $url): array
     {
         $url = $this->normalizeUrl($url);
@@ -106,6 +131,7 @@ class SiteAnalyzerService
         $infrastructure = $this->detectInfrastructure($url, $headers);
         [$recommendedPlatform, $reason] = $this->recommendPlatform($framework, $businessType);
         $crawlSummary = $this->crawlSite($url, $html, $response->status());
+        [$uxScore, $seoScore] = $this->computeScores($crawlSummary);
 
         return [
             'url' => $url,
@@ -120,6 +146,8 @@ class SiteAnalyzerService
             'recommendation_reason' => $reason,
             'crawl_summary' => $crawlSummary,
             'proposed_pages' => self::proposedPages($businessType),
+            'ux_score' => $uxScore,
+            'seo_score' => $seoScore,
         ];
     }
 
@@ -159,7 +187,16 @@ class SiteAnalyzerService
         $missingTitle = [];
         $missingMeta = [];
         $withoutH1 = [];
+        $missingH2 = [];
+        $headingOrderIssues = [];
+        $duplicateHeadTags = [];
+        $duplicateBodyTags = [];
         $titles = [];
+        $totalImages = 0;
+        $missingAltImages = 0;
+        $imageUrls = [];
+        $homepageTitle = null;
+        $homepageH1 = null;
 
         foreach ($pages as $pageUrl => $page) {
             $status = $page['status'];
@@ -172,7 +209,9 @@ class SiteAnalyzerService
             $pageHtml = $page['html'];
             $title = $this->extractTag($pageHtml, 'title');
             $desc = $this->extractMeta($pageHtml, 'description');
-            $h1Count = preg_match_all('#<h1[ >]#i', $pageHtml);
+            $headings = $this->extractHeadingSequence($pageHtml);
+            $h1Count = count(array_filter($headings, fn ($h) => $h === 1));
+            $h2Count = count(array_filter($headings, fn ($h) => $h === 2));
 
             if (! $title) {
                 $missingTitle[] = $pageUrl;
@@ -186,6 +225,38 @@ class SiteAnalyzerService
 
             if ($h1Count === 0) {
                 $withoutH1[] = $pageUrl;
+            } elseif ($h2Count === 0) {
+                $missingH2[] = $pageUrl;
+            }
+
+            if ($this->hasSkippedHeadingLevel($headings)) {
+                $headingOrderIssues[] = $pageUrl;
+            }
+
+            if (preg_match_all('#<head[ >]#i', $pageHtml) > 1) {
+                $duplicateHeadTags[] = $pageUrl;
+            }
+            if (preg_match_all('#<body[ >]#i', $pageHtml) > 1) {
+                $duplicateBodyTags[] = $pageUrl;
+            }
+
+            preg_match_all('#<img\b[^>]*>#i', $pageHtml, $imgMatches);
+            foreach ($imgMatches[0] as $imgTag) {
+                $totalImages++;
+                if (! preg_match('#\balt\s*=\s*["\'][^"\']+["\']#i', $imgTag)) {
+                    $missingAltImages++;
+                }
+                if (count($imageUrls) < 15 && preg_match('#\bsrc\s*=\s*["\']([^"\']+)["\']#i', $imgTag, $srcMatch)) {
+                    $absolute = $this->resolveUrl($baseUrl, $srcMatch[1]);
+                    if ($absolute) {
+                        $imageUrls[] = $absolute;
+                    }
+                }
+            }
+
+            if ($pageUrl === $baseUrl) {
+                $homepageTitle = $title;
+                $homepageH1 = $this->extractFirstHeadingText($pageHtml, 1);
             }
         }
 
@@ -196,14 +267,144 @@ class SiteAnalyzerService
             }
         }
 
+        $homepageTitleMatchesH1 = $homepageTitle && $homepageH1
+            && mb_strtolower(trim($homepageTitle)) === mb_strtolower(trim($homepageH1));
+
         return [
             'pages_crawled' => count($pages),
             'broken_links' => $brokenLinks,
             'missing_title' => $missingTitle,
             'missing_meta_description' => $missingMeta,
             'pages_without_h1' => $withoutH1,
+            'pages_missing_h2' => $missingH2,
+            'heading_order_issues' => $headingOrderIssues,
             'duplicate_titles' => $duplicateTitles,
+            'duplicate_head_tags' => $duplicateHeadTags,
+            'duplicate_body_tags' => $duplicateBodyTags,
+            'total_images' => $totalImages,
+            'missing_alt_images' => $missingAltImages,
+            'large_images' => $this->checkImageSizes($imageUrls),
+            'homepage_title_matches_h1' => $homepageTitleMatchesH1,
         ];
+    }
+
+    /** @return array<int, int> تسلسل مستويات العناوين (1..6) بترتيب ظهورها بالصفحة */
+    private function extractHeadingSequence(string $html): array
+    {
+        preg_match_all('#<h([1-6])[ >]#i', $html, $m);
+
+        return array_map('intval', $m[1]);
+    }
+
+    private function extractFirstHeadingText(string $html, int $level): ?string
+    {
+        if (preg_match("#<h{$level}[^>]*>(.*?)</h{$level}>#is", $html, $m)) {
+            return trim(html_entity_decode(strip_tags($m[1])));
+        }
+
+        return null;
+    }
+
+    /** يكشف قفزة بمستوى العنوان (مثلاً H3 تظهر قبل أي H2) */
+    private function hasSkippedHeadingLevel(array $headings): bool
+    {
+        $seenMax = 0;
+        foreach ($headings as $level) {
+            if ($level > $seenMax + 1 && $seenMax > 0) {
+                return true;
+            }
+            $seenMax = max($seenMax, $level);
+        }
+
+        return false;
+    }
+
+    /** @param array<int, string> $imageUrls @return array<int, array{url: string, bytes: int}> */
+    private function checkImageSizes(array $imageUrls): array
+    {
+        if (empty($imageUrls)) {
+            return [];
+        }
+
+        $large = [];
+        $limitBytes = 100 * 1024;
+
+        $missingContentLength = [];
+
+        try {
+            $responses = Http::pool(fn ($pool) => collect($imageUrls)->each(
+                fn ($url) => $pool->as($url)->timeout(8)->connectTimeout(5)->head($url)
+            ));
+
+            foreach ($imageUrls as $url) {
+                $resp = $responses[$url] ?? null;
+                if (! $resp instanceof \Illuminate\Http\Client\Response) {
+                    continue;
+                }
+                $size = (int) $resp->header('Content-Length');
+                if ($size > 0) {
+                    if ($size > $limitBytes) {
+                        $large[] = ['url' => $url, 'bytes' => $size];
+                    }
+                } else {
+                    // بعض الخوادم لا ترجع Content-Length لطلب HEAD
+                    $missingContentLength[] = $url;
+                }
+            }
+        } catch (Throwable $e) {
+            return $large;
+        }
+
+        if (! empty($missingContentLength)) {
+            try {
+                $responses = Http::pool(fn ($pool) => collect($missingContentLength)->each(
+                    fn ($url) => $pool->as($url)->timeout(8)->connectTimeout(5)->get($url)
+                ));
+
+                foreach ($missingContentLength as $url) {
+                    $resp = $responses[$url] ?? null;
+                    if ($resp instanceof \Illuminate\Http\Client\Response && strlen($resp->body()) > $limitBytes) {
+                        $large[] = ['url' => $url, 'bytes' => strlen($resp->body())];
+                    }
+                }
+            } catch (Throwable $e) {
+                // نكتفي بما رصدناه عبر HEAD لو فشل الاستعلام الاحتياطي
+            }
+        }
+
+        return $large;
+    }
+
+    /** @return array{0: int, 1: int} [ux_score, seo_score] من 100 */
+    private function computeScores(array $crawl): array
+    {
+        $seo = 100;
+        $seo -= min(count($crawl['broken_links']) * 3, 15);
+        $seo -= min(count($crawl['missing_title']) * 5, 20);
+        $seo -= min(count($crawl['missing_meta_description']) * 2, 15);
+        $seo -= min(count($crawl['duplicate_titles']) * 5, 15);
+        $seo -= min(count($crawl['duplicate_head_tags']) * 5, 15);
+        $seo -= min(count($crawl['duplicate_body_tags']) * 5, 15);
+        $seo -= min(count($crawl['pages_without_h1']) * 4, 15);
+        $seo -= min(count($crawl['pages_missing_h2']) * 2, 10);
+        $seo -= min(count($crawl['heading_order_issues']) * 3, 10);
+        $seo -= $crawl['homepage_title_matches_h1'] ? 5 : 0;
+        if ($crawl['pages_crawled'] > 0 && ($crawl['total_images'] / $crawl['pages_crawled']) > 10) {
+            $seo -= 10;
+        }
+        $seo = max(0, min(100, $seo));
+
+        $ux = 100;
+        $ux -= min(count($crawl['broken_links']) * 5, 15);
+        $ux -= min(count($crawl['large_images']) * 2, 20);
+        $ux -= min(count($crawl['duplicate_head_tags']) * 5, 10);
+        $ux -= min(count($crawl['duplicate_body_tags']) * 5, 10);
+        if ($crawl['total_images'] > 0) {
+            $ux -= min((int) round(($crawl['missing_alt_images'] / $crawl['total_images']) * 30), 30);
+        }
+        $ux = max(0, min(100, $ux));
+
+        return [$ux, $seo];
     }
 
     /** @return array<int, string> */
@@ -259,19 +460,20 @@ class SiteAnalyzerService
         $baseParts = parse_url($base);
         $scheme = $baseParts['scheme'] ?? 'https';
         $host = $baseParts['host'] ?? '';
+        $authority = $host.(isset($baseParts['port']) ? ':'.$baseParts['port'] : '');
 
         if (str_starts_with($href, '//')) {
             return "{$scheme}:{$href}";
         }
 
         if (str_starts_with($href, '/')) {
-            return "{$scheme}://{$host}{$href}";
+            return "{$scheme}://{$authority}{$href}";
         }
 
         $basePath = $baseParts['path'] ?? '/';
         $dir = str_ends_with($basePath, '/') ? $basePath : (dirname($basePath).'/');
 
-        return "{$scheme}://{$host}{$dir}{$href}";
+        return "{$scheme}://{$authority}{$dir}{$href}";
     }
 
     private function normalizeUrl(string $url): string

@@ -1,9 +1,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../lib/api'
+import { useAuthStore } from '../stores/auth'
 
+const auth = useAuthStore()
 const stats = ref(null)
 const loading = ref(true)
+const priorities = ref([])
+const prioritiesLoading = ref(true)
+
+const priorityLabels = { critical: 'حرجة', high: 'عالية', medium: 'متوسطة', low: 'منخفضة' }
+const priorityColors = {
+  critical: 'bg-red-100 text-red-700',
+  high: 'bg-orange-100 text-orange-700',
+  medium: 'bg-amber-100 text-amber-700',
+  low: 'bg-slate-100 text-slate-600',
+}
 
 const statusLabels = {
   in_progress: 'قيد التنفيذ',
@@ -26,12 +38,23 @@ const actionLabels = {
   qa_review_started: 'بدء مراجعة جودة',
   qa_review_submitted: 'إنهاء مراجعة جودة',
   project_final_signoff: 'اعتماد نهائي',
+  client_update_sent: 'إرسال تحديث للعميل',
+  client_feedback_recorded: 'تسجيل ملاحظات عميل',
+  pipeline_stage_changed: 'تغيير مرحلة المشروع',
+  project_blocked: 'توقف المشروع',
 }
 
 onMounted(async () => {
   const { data } = await api.get('/dashboard')
   stats.value = data
   loading.value = false
+
+  try {
+    const { data: priorityData } = await api.get('/dashboard/my-priorities')
+    priorities.value = priorityData.data
+  } finally {
+    prioritiesLoading.value = false
+  }
 })
 </script>
 
@@ -55,6 +78,43 @@ onMounted(async () => {
         <span class="shrink-0 bg-white text-indigo-950 text-sm font-medium rounded-lg px-4 py-2">+ تحليل موقع جديد</span>
       </div>
     </router-link>
+
+    <router-link
+      v-if="auth.viewsAllProjects"
+      :to="{ name: 'client-follow-ups' }"
+      class="flex items-center justify-between gap-4 flex-wrap bg-white hover:bg-slate-50 transition rounded-xl border border-slate-200 p-4 mb-8"
+    >
+      <span class="text-sm font-medium text-slate-800">متابعة العملاء — من يحتاج تواصل اليوم؟</span>
+      <span class="text-xs text-indigo-600">فتح لوحة المتابعة ↗</span>
+    </router-link>
+
+    <div v-if="!prioritiesLoading && priorities.length" class="bg-white rounded-xl border border-slate-200 p-5 mb-8">
+      <h2 class="font-semibold text-slate-900 mb-1">أولوياتك اليوم</h2>
+      <p class="text-xs text-slate-500 mb-4">مشاريعك مرتبة من الأعلى أولوية للأقل، مع سبب كل ترتيب.</p>
+      <div class="space-y-3">
+        <router-link
+          v-for="p in priorities"
+          :key="p.id"
+          :to="{ name: 'project-detail', params: { id: p.id } }"
+          class="block border border-slate-100 hover:border-slate-200 hover:bg-slate-50 rounded-lg p-3 transition"
+        >
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="priorityColors[p.priority.level]">
+                {{ priorityLabels[p.priority.level] }} ({{ p.priority.score }})
+              </span>
+              <span class="font-medium text-slate-800 text-sm">{{ p.name }}</span>
+              <span class="text-xs text-slate-400">{{ p.client_name }}</span>
+              <span v-if="!p.is_primary" class="text-xs text-slate-400">(مساعد)</span>
+            </div>
+            <span v-if="p.current_task" class="text-xs text-slate-500">المهمة الحالية: {{ p.current_task }}</span>
+          </div>
+          <div v-if="p.priority.reasons.length" class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+            <span v-for="(r, i) in p.priority.reasons" :key="i">{{ r.label }} (+{{ r.points }})</span>
+          </div>
+        </router-link>
+      </div>
+    </div>
 
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
 

@@ -33,6 +33,7 @@ const emptyQuotation = () => ({
   detected_framework: null, detected_signals: [], meta_title: null, meta_description: null,
   business_type: null, business_summary: null, infrastructure: {}, recommended_platform: null, recommendation_reason: null,
   crawl_summary: null, proposed_pages: [],
+  homepage_screenshot: null, ux_score: null, seo_score: null, speed_score: null, audit_recommendation: null,
   project_summary: '', technical_scope: '', cost_items: [], currency: 'USD',
   domain_cost: null, hosting_cost: null, hosting_cycle: 'yearly', support_months: 1,
 })
@@ -68,6 +69,13 @@ function addCostItem() {
 }
 function removeCostItem(i) {
   quotation.value.cost_items.splice(i, 1)
+}
+
+function scoreClass(score) {
+  if (score === null || score === undefined) return 'text-slate-400'
+  if (score >= 75) return 'text-emerald-600'
+  if (score >= 50) return 'text-amber-600'
+  return 'text-red-600'
 }
 
 function addProposedPage() {
@@ -136,6 +144,10 @@ function copyText() {
     `- الاستضافة/الحماية: ${q.infrastructure?.cdn_or_firewall || '—'}`,
     '',
     q.crawl_summary ? `- صفحات تم فحصها: ${q.crawl_summary.pages_crawled ?? 0} — روابط مكسورة: ${(q.crawl_summary.broken_links || []).length} — صفحات بدون H1: ${(q.crawl_summary.pages_without_h1 || []).length}` : null,
+    (q.ux_score != null || q.seo_score != null || q.speed_score != null)
+      ? `- نتيجة التقييم: تجربة المستخدم ${q.ux_score ?? '—'}% — SEO ${q.seo_score ?? '—'}% — السرعة ${q.speed_score ?? '—'}%`
+      : null,
+    q.audit_recommendation ? `- نصائح مهارات نت: ${q.audit_recommendation}` : null,
     '',
     'التوصية الفنية:',
     `${q.recommended_platform || '—'}`,
@@ -260,6 +272,42 @@ onMounted(() => {
             <div v-for="(b, i) in quotation.crawl_summary.broken_links" :key="i" class="text-xs text-slate-600 break-all">
               {{ b.url }} — <span class="text-red-600">{{ b.status || 'تعذر الوصول' }}</span>
             </div>
+          </div>
+        </div>
+
+        <div
+          v-if="quotation.homepage_screenshot || quotation.ux_score !== null || quotation.seo_score !== null || quotation.speed_score !== null"
+          class="bg-white rounded-xl border border-slate-200 p-5 mb-6"
+        >
+          <h2 class="font-semibold text-slate-900 mb-3">تدقيق الموقع (Audit)</h2>
+
+          <img
+            v-if="quotation.homepage_screenshot"
+            :src="`data:image/png;base64,${quotation.homepage_screenshot}`"
+            alt="لقطة من الصفحة الرئيسية"
+            class="w-full rounded-lg border border-slate-200 mb-4"
+          />
+          <p v-else-if="analyzed" class="text-xs text-slate-400 mb-4">
+            تعذر التقاط لقطة شاشة للصفحة الرئيسية (قد لا يكون المتصفح الآلي متاحاً على هذه البيئة).
+          </p>
+
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-slate-500 mb-1">تجربة المستخدم</div>
+              <div class="text-xl font-bold" :class="scoreClass(quotation.ux_score)">{{ quotation.ux_score ?? '—' }}%</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-slate-500 mb-1">SEO</div>
+              <div class="text-xl font-bold" :class="scoreClass(quotation.seo_score)">{{ quotation.seo_score ?? '—' }}%</div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 text-center">
+              <div class="text-xs text-slate-500 mb-1">السرعة</div>
+              <div class="text-xl font-bold" :class="scoreClass(quotation.speed_score)">{{ quotation.speed_score ?? '—' }}%</div>
+            </div>
+          </div>
+
+          <div v-if="quotation.audit_recommendation" class="bg-amber-50 text-amber-900 text-sm rounded-lg p-4">
+            <span class="font-semibold">نصائح مهارات نت:</span> {{ quotation.audit_recommendation }}
           </div>
         </div>
 

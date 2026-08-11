@@ -16,15 +16,17 @@ const saving = ref(false)
 const error = ref('')
 const deleting = ref(null)
 
-const filters = ref({ search: '', status: '', developer_id: '' })
+const filters = ref({ search: '', status: '', developer_id: '', blocker: '', missing_requirements: false, waiting_for_client: false })
 let searchDebounce = null
 
 const emptyForm = () => ({
   name: '',
   client_name: '',
+  project_type: '',
   envato_preview_url: '',
   site_url: '',
   content_deadline: '',
+  primary_developer_id: '',
   developer_ids: [],
 })
 
@@ -46,12 +48,49 @@ const statusColors = {
   delivered: 'bg-indigo-100 text-indigo-700',
 }
 
+const projectTypeLabels = {
+  ecommerce: 'متجر إلكتروني',
+  corporate: 'موقع شركة',
+  landing_page: 'صفحة هبوط',
+  portfolio: 'معرض أعمال',
+  blog: 'مدونة',
+  booking: 'موقع حجوزات',
+  marketplace: 'سوق إلكتروني',
+  custom: 'مخصص',
+  mobile_app: 'تطبيق موبايل',
+  other: 'أخرى',
+}
+
+const blockerLabels = {
+  none: 'لا يوجد',
+  waiting_client: 'بانتظار العميل',
+  waiting_developer: 'بانتظار المبرمج',
+  waiting_payment_gateway: 'بانتظار بوابة الدفع',
+  waiting_domain: 'بانتظار الدومين',
+  waiting_hosting: 'بانتظار الاستضافة',
+  waiting_content: 'بانتظار المحتوى',
+  waiting_logo: 'بانتظار الشعار',
+  waiting_product_images: 'بانتظار صور المنتجات',
+  other: 'أخرى',
+}
+
+const priorityLabels = { critical: 'حرجة', high: 'عالية', medium: 'متوسطة', low: 'منخفضة' }
+const priorityColors = {
+  critical: 'bg-red-100 text-red-700',
+  high: 'bg-orange-100 text-orange-700',
+  medium: 'bg-amber-100 text-amber-700',
+  low: 'bg-slate-100 text-slate-600',
+}
+
 async function loadProjects() {
   loading.value = true
   const params = {}
   if (filters.value.search) params.search = filters.value.search
   if (filters.value.status) params.status = filters.value.status
   if (filters.value.developer_id) params.developer_id = filters.value.developer_id
+  if (filters.value.blocker) params.blocker = filters.value.blocker
+  if (filters.value.missing_requirements) params.missing_requirements = 1
+  if (filters.value.waiting_for_client) params.waiting_for_client = 1
   const { data } = await api.get('/projects', { params })
   projects.value = data.data
   loading.value = false
@@ -64,7 +103,10 @@ watch(
     searchDebounce = setTimeout(loadProjects, 350)
   },
 )
-watch([() => filters.value.status, () => filters.value.developer_id], loadProjects)
+watch(
+  [() => filters.value.status, () => filters.value.developer_id, () => filters.value.blocker, () => filters.value.missing_requirements, () => filters.value.waiting_for_client],
+  loadProjects,
+)
 
 async function loadUsers() {
   const { data } = await api.get('/users')
@@ -84,9 +126,11 @@ function openEdit(project) {
   form.value = {
     name: project.name,
     client_name: project.client_name,
+    project_type: project.project_type || '',
     envato_preview_url: project.envato_preview_url || '',
     site_url: project.site_url || '',
-    content_deadline: project.content_deadline || '',
+    content_deadline: project.content_deadline ? project.content_deadline.slice(0, 10) : '',
+    primary_developer_id: project.primary_developer_id || '',
     developer_ids: (project.developers || []).map((d) => d.id),
   }
   error.value = ''
@@ -167,6 +211,18 @@ onMounted(() => {
         <option value="">كل المبرمجين</option>
         <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
       </select>
+      <select v-model="filters.blocker" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+        <option value="">كل حالات التوقف</option>
+        <option v-for="(label, key) in blockerLabels" :key="key" :value="key" :disabled="key === 'none'">{{ label }}</option>
+      </select>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600 px-1">
+        <input type="checkbox" v-model="filters.missing_requirements" class="rounded border-slate-300" />
+        متطلبات ناقصة
+      </label>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600 px-1">
+        <input type="checkbox" v-model="filters.waiting_for_client" class="rounded border-slate-300" />
+        بانتظار العميل
+      </label>
     </div>
 
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
@@ -180,6 +236,7 @@ onMounted(() => {
             <th class="text-right px-4 py-3 font-medium">المرحلة الحالية</th>
             <th class="text-right px-4 py-3 font-medium">التحقق</th>
             <th class="text-right px-4 py-3 font-medium">الحالة</th>
+            <th class="text-right px-4 py-3 font-medium">الأولوية</th>
             <th v-if="auth.canManageProjects" class="text-right px-4 py-3 font-medium">إجراءات</th>
           </tr>
         </thead>
@@ -201,6 +258,12 @@ onMounted(() => {
                 {{ statusLabels[p.status] || p.status }}
               </span>
             </td>
+            <td class="px-4 py-3">
+              <span v-if="p.priority" class="px-2 py-1 rounded-full text-xs font-medium" :class="priorityColors[p.priority.level]">
+                {{ priorityLabels[p.priority.level] }} ({{ p.priority.score }})
+              </span>
+              <span v-if="p.priority?.blocked" class="ms-1 text-xs text-slate-400">متوقف</span>
+            </td>
             <td v-if="auth.canManageProjects" class="px-4 py-3" @click.stop>
               <div class="flex gap-3 text-xs">
                 <button class="text-indigo-600 hover:underline" @click="openEdit(p)">تعديل</button>
@@ -209,7 +272,7 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="!projects.length">
-            <td colspan="6" class="px-4 py-8 text-center text-slate-400">لا توجد مشاريع بعد.</td>
+            <td colspan="7" class="px-4 py-8 text-center text-slate-400">لا توجد مشاريع بعد.</td>
           </tr>
         </tbody>
       </table>
@@ -231,6 +294,13 @@ onMounted(() => {
             <input v-model="form.client_name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
           </div>
           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">نوع المشروع</label>
+            <select v-model="form.project_type" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+              <option value="">— اختر —</option>
+              <option v-for="(label, key) in projectTypeLabels" :key="key" :value="key">{{ label }}</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">رابط Live Preview (Envato)</label>
             <input v-model="form.envato_preview_url" type="url" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
           </div>
@@ -246,7 +316,14 @@ onMounted(() => {
             <input v-model="form.content_deadline" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">المبرمجون المكلّفون</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">المبرمج الرئيسي (المسؤول عن المشروع)</label>
+            <select v-model="form.primary_developer_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+              <option value="">— بدون —</option>
+              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">المبرمجون المساعدون</label>
             <div class="w-full rounded-lg border border-slate-300 divide-y divide-slate-100 max-h-40 overflow-y-auto">
               <label
                 v-for="u in users"
