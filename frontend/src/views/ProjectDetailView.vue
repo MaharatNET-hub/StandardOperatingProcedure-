@@ -12,6 +12,8 @@ import SeoAuditTab from '../components/SeoAuditTab.vue'
 import ProjectDetailsTab from '../components/ProjectDetailsTab.vue'
 import ClientCommunicationTab from '../components/ClientCommunicationTab.vue'
 import ReadinessTab from '../components/ReadinessTab.vue'
+import ProjectNotesTab from '../components/ProjectNotesTab.vue'
+import { priorityLabels, priorityColors } from '../lib/labels'
 
 const props = defineProps({ id: [String, Number] })
 
@@ -36,18 +38,11 @@ const statusColors = {
   delivered: 'bg-indigo-100 text-indigo-700',
 }
 
-const priorityLabels = { critical: 'حرجة', high: 'عالية', medium: 'متوسطة', low: 'منخفضة' }
-const priorityColors = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-slate-100 text-slate-600',
-}
-
 const tabs = computed(() => [
   { key: 'readiness', label: 'الجاهزية والمتطلبات' },
   { key: 'communication', label: 'التواصل مع العميل' },
   { key: 'details', label: 'تفاصيل إضافية' },
+  { key: 'notes', label: `سجل الملاحظات${project.value?.notes_count ? ` (${project.value.notes_count})` : ''}` },
   { key: 'phases', label: 'مراحل العمل' },
   { key: 'checklist', label: 'قائمة التحقق' },
   { key: 'plugins', label: 'حوكمة الإضافات' },
@@ -162,6 +157,7 @@ onMounted(loadProject)
     <ReadinessTab v-if="tab === 'readiness'" :project="project" />
     <ClientCommunicationTab v-else-if="tab === 'communication'" :project="project" @reload="loadProject" />
     <ProjectDetailsTab v-else-if="tab === 'details'" :project="project" @reload="loadProject" />
+    <ProjectNotesTab v-else-if="tab === 'notes'" :project="project" @reload="loadProject" />
     <PhasesTab v-else-if="tab === 'phases'" :project="project" @reload="loadProject" />
     <ChecklistTab v-else-if="tab === 'checklist'" :project="project" />
     <PluginsTab v-else-if="tab === 'plugins'" :project="project" />

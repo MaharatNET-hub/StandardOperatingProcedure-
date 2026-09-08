@@ -22,13 +22,27 @@ class Project extends Model
     /** @var array<int, string> مراحل خط سير المشروع التجاري (مستقلة عن status الخاص بسير عمل الجودة/QA) */
     public const PIPELINE_STAGES = [
         'new_project', 'information_collection', 'ready_to_start', 'in_progress',
-        'waiting_client', 'waiting_payment', 'waiting_content', 'testing', 'client_review',
+        'waiting_client', 'waiting_payment', 'waiting_content', 'internal_review_qa', 'testing', 'client_review',
         'changes_requested', 'final_review', 'ready_for_launch', 'live', 'completed', 'paused', 'cancelled',
     ];
 
+    /** @var array<int, string> المراحل المغلقة التي لا تُحتسب لها أولوية (BR-01) */
+    public const CLOSED_STAGES = ['paused', 'cancelled', 'completed'];
+
     public const BLOCKERS = [
         'none', 'waiting_client', 'waiting_developer', 'waiting_payment_gateway', 'waiting_domain',
-        'waiting_hosting', 'waiting_content', 'waiting_logo', 'waiting_product_images', 'other',
+        'waiting_hosting', 'waiting_content', 'waiting_logo', 'waiting_product_images', 'waiting_shipping', 'other',
+    ];
+
+    /**
+     * العوائق التي تجعل المشروع غير قابل للتنفيذ من قِبل المبرمج لأنها بانتظار
+     * العميل أو جهة خارجية (BR-02 و BR-15).
+     *
+     * @var array<int, string>
+     */
+    public const NON_WORKABLE_BLOCKERS = [
+        'waiting_client', 'waiting_domain', 'waiting_hosting', 'waiting_content',
+        'waiting_logo', 'waiting_product_images', 'waiting_payment_gateway', 'waiting_shipping',
     ];
 
     public const FEEDBACK_STATUSES = ['none', 'new', 'in_progress', 'completed'];
@@ -54,6 +68,7 @@ class Project extends Model
         'content_deadline',
         'start_date',
         'next_meeting_at',
+        'paused_since',
         'revision_rounds_allowed',
         'has_domain', 'domain_name', 'domain_login_info', 'domain_purchaser',
         'has_hosting', 'hosting_provider', 'hosting_login_info', 'hosting_purchaser',
@@ -72,6 +87,7 @@ class Project extends Model
             'content_deadline' => 'date',
             'start_date' => 'date',
             'next_meeting_at' => 'datetime',
+            'paused_since' => 'date',
             'last_client_update_at' => 'datetime',
             'next_client_update_at' => 'datetime',
             'client_feedback_at' => 'datetime',
@@ -154,6 +170,21 @@ class Project extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ProjectNote::class);
+    }
+
+    /** عدد الأيام التي قضاها المشروع متوقفاً (لوحة Paused — Monitor). */
+    public function pausedDays(): ?int
+    {
+        if ($this->pipeline_stage !== 'paused' || ! $this->paused_since) {
+            return null;
+        }
+
+        return (int) $this->paused_since->copy()->startOfDay()->diffInDays(now()->startOfDay());
     }
 
     public function checklistProgress(): array

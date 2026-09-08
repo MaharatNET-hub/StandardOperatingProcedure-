@@ -11,8 +11,10 @@ use App\Http\Controllers\Api\PerformanceReportController;
 use App\Http\Controllers\Api\PluginRequestController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectInsightController;
+use App\Http\Controllers\Api\ProjectNoteController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
+use App\Http\Controllers\Api\ProjectViewController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SeoAuditController;
@@ -32,6 +34,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/my-priorities', [ProjectInsightController::class, 'myPriorities']);
     Route::get('/client-follow-ups', [ProjectInsightController::class, 'clientFollowUps']);
+
+    // لوحات النظام (SRS §18)
+    Route::get('/views/pm-dashboard', [ProjectViewController::class, 'pmDashboard']);
+    Route::get('/views/today-by-developer', [ProjectViewController::class, 'todayByDeveloper']);
+    Route::get('/views/updates-due', [ProjectViewController::class, 'updatesDue']);
+    Route::get('/views/paused-monitor', [ProjectViewController::class, 'pausedMonitor']);
+    Route::get('/views/critical-watchlist', [ProjectViewController::class, 'criticalWatchlist']);
+    Route::get('/views/pipeline', [ProjectViewController::class, 'pipeline']);
+
+    // سجل ملاحظات المشاريع (SRS §19–22)
+    Route::get('/project-notes', [ProjectNoteController::class, 'index']);
+    Route::patch('/project-notes/{projectNote}', [ProjectNoteController::class, 'update']);
+    Route::delete('/project-notes/{projectNote}', [ProjectNoteController::class, 'destroy']);
     Route::get('/tools', [ToolController::class, 'index']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
@@ -59,6 +74,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('projects', ProjectController::class);
     Route::post('/projects/{project}/send-client-update', [ProjectController::class, 'sendClientUpdate']);
+    Route::get('/projects/{project}/notes', [ProjectNoteController::class, 'forProject']);
+    Route::post('/projects/{project}/notes', [ProjectNoteController::class, 'store']);
     Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
 
     Route::get('/projects/{project}/seo-audits', [SeoAuditController::class, 'index']);

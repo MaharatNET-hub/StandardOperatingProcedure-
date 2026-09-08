@@ -25,6 +25,7 @@ class ProjectController extends Controller
             ->withCount([
                 'checklistItems as checklist_total',
                 'checklistItems as checklist_done' => fn ($q) => $q->where('status', 'done'),
+                'notes as notes_count',
             ]);
 
         $user = $request->user();
@@ -153,6 +154,9 @@ class ProjectController extends Controller
             'signoffs.user:id,name',
         ]);
 
+        $project->loadCount('notes');
+        $project->setAttribute('paused_days', $project->pausedDays());
+
         $readiness = $this->readinessService->evaluate($project);
         $project->setAttribute('readiness', $readiness);
         $project->setAttribute('priority', $this->priorityService->evaluate($project, $readiness));
@@ -170,6 +174,8 @@ class ProjectController extends Controller
         unset($data['developer_ids']);
 
         $this->logFieldTransitions($project, $data, $request->user()->id);
+
+        $data = $this->applyPausedSince($project, $data);
 
         $project->update($data);
 
@@ -232,6 +238,31 @@ class ProjectController extends Controller
         }
     }
 
+    /**
+     * Date - Paused Since (SRS §8): يضبط تاريخ الإيقاف تلقائياً عند دخول
+     * المشروع مرحلة "متوقف"، ويمسحه عند استئنافه — حتى تُحسب مدة التوقف
+     * في لوحة "Paused — Monitor" دون إدخال يدوي.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function applyPausedSince(Project $project, array $data): array
+    {
+        if (! array_key_exists('pipeline_stage', $data) || array_key_exists('paused_since', $data)) {
+            return $data;
+        }
+
+        $newStage = $data['pipeline_stage'];
+
+        if ($newStage === 'paused' && $project->pipeline_stage !== 'paused') {
+            $data['paused_since'] = now()->toDateString();
+        } elseif ($newStage !== 'paused' && $project->pipeline_stage === 'paused') {
+            $data['paused_since'] = null;
+        }
+
+        return $data;
+    }
+
     private function logFieldTransitions(Project $project, array $data, int $userId): void
     {
         if (array_key_exists('pipeline_stage', $data) && $data['pipeline_stage'] !== $project->pipeline_stage) {
@@ -266,6 +297,7 @@ class ProjectController extends Controller
             'content_deadline' => ['nullable', 'date'],
             'start_date' => ['nullable', 'date'],
             'next_meeting_at' => ['nullable', 'date'],
+            'paused_since' => ['nullable', 'date'],
             'revision_rounds_allowed' => [$sometimes, 'integer', 'min:0'],
             'primary_developer_id' => ['nullable', 'integer', 'exists:users,id'],
             'developer_ids' => ['array'],
@@ -289,14 +321,14 @@ class ProjectController extends Controller
 
             'needs_payment_gateway' => ['nullable', 'boolean'],
             'payment_gateway_type' => ['nullable', 'string', 'max:255'],
-            'payment_gateway_status' => ['nullable', 'in:not_started,in_progress,done'],
+            'payment_gateway_status' => ['nullable', 'in:not_started,in_progress,done,na'],
             'has_shipping_company' => ['nullable', 'boolean'],
             'shipping_company_name' => ['nullable', 'string', 'max:255'],
 
             'content_ready' => ['nullable', 'boolean'],
             'product_images_ready' => ['nullable', 'boolean'],
             'seo_required' => ['nullable', 'boolean'],
-            'seo_status' => ['nullable', 'in:not_started,in_progress,done'],
+            'seo_status' => ['nullable', 'in:not_started,in_progress,done,na'],
             'google_analytics_connected' => ['nullable', 'boolean'],
             'search_console_connected' => ['nullable', 'boolean'],
 

@@ -1,41 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import api from '../lib/api'
+import { pipelineStageLabels, projectTypeLabels } from '../lib/labels'
 
 const props = defineProps({ project: Object })
 const emit = defineEmits(['reload'])
-
-const pipelineStageLabels = {
-  new_project: 'مشروع جديد',
-  information_collection: 'جمع المعلومات',
-  ready_to_start: 'جاهز للبدء',
-  in_progress: 'قيد التنفيذ',
-  waiting_client: 'بانتظار العميل',
-  waiting_payment: 'بانتظار الدفع',
-  waiting_content: 'بانتظار المحتوى',
-  testing: 'اختبار',
-  client_review: 'مراجعة العميل',
-  changes_requested: 'طلب تعديلات',
-  final_review: 'مراجعة نهائية',
-  ready_for_launch: 'جاهز للإطلاق',
-  live: 'مباشر (Live)',
-  completed: 'مكتمل',
-  paused: 'متوقف',
-  cancelled: 'ملغي',
-}
-
-const projectTypeLabels = {
-  ecommerce: 'متجر إلكتروني',
-  corporate: 'موقع شركة',
-  landing_page: 'صفحة هبوط',
-  portfolio: 'معرض أعمال',
-  blog: 'مدونة',
-  booking: 'موقع حجوزات',
-  marketplace: 'سوق إلكتروني',
-  custom: 'مخصص',
-  mobile_app: 'تطبيق موبايل',
-  other: 'أخرى',
-}
 
 function dateInput(value) {
   return value ? value.slice(0, 10) : ''

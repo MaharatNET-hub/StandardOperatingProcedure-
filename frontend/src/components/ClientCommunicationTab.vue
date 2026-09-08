@@ -1,23 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '../lib/api'
+import { blockerLabels, updateStatusLabels, updateStatusColors } from '../lib/labels'
 
 const props = defineProps({ project: Object })
 const emit = defineEmits(['reload'])
 
 const feedbackLabels = { none: 'لا يوجد', new: 'جديدة', in_progress: 'قيد التنفيذ', completed: 'مكتملة' }
-const blockerLabels = {
-  none: 'لا يوجد',
-  waiting_client: 'بانتظار العميل',
-  waiting_developer: 'بانتظار المبرمج',
-  waiting_payment_gateway: 'بانتظار بوابة الدفع',
-  waiting_domain: 'بانتظار الدومين',
-  waiting_hosting: 'بانتظار الاستضافة',
-  waiting_content: 'بانتظار المحتوى',
-  waiting_logo: 'بانتظار الشعار',
-  waiting_product_images: 'بانتظار صور المنتجات',
-  other: 'أخرى',
-}
 
 function toLocalInput(value) {
   if (!value) return ''
@@ -95,8 +84,15 @@ async function save() {
         </div>
         <div>
           <div class="text-xs text-slate-500 mb-1">التحديث القادم</div>
-          <div class="font-medium text-slate-800">
+          <div class="font-medium text-slate-800 flex items-center gap-2 flex-wrap">
             {{ project.next_client_update_at ? new Date(project.next_client_update_at).toLocaleDateString('ar') : '—' }}
+            <span
+              v-if="project.priority"
+              class="px-2 py-0.5 rounded-full text-xs font-medium"
+              :class="updateStatusColors[project.priority.update_status]"
+            >
+              {{ updateStatusLabels[project.priority.update_status] }}
+            </span>
           </div>
         </div>
         <div>

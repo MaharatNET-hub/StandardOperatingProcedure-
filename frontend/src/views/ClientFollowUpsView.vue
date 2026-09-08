@@ -1,23 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../lib/api'
+import { feedbackLabels, blockerLabels, updateStatusLabels, updateStatusColors } from '../lib/labels'
 
 const items = ref([])
 const loading = ref(true)
-
-const feedbackLabels = { none: 'لا يوجد', new: 'جديدة', in_progress: 'قيد التنفيذ', completed: 'مكتملة' }
-const blockerLabels = {
-  none: 'لا يوجد',
-  waiting_client: 'بانتظار العميل',
-  waiting_developer: 'بانتظار المبرمج',
-  waiting_payment_gateway: 'بانتظار بوابة الدفع',
-  waiting_domain: 'بانتظار الدومين',
-  waiting_hosting: 'بانتظار الاستضافة',
-  waiting_content: 'بانتظار المحتوى',
-  waiting_logo: 'بانتظار الشعار',
-  waiting_product_images: 'بانتظار صور المنتجات',
-  other: 'أخرى',
-}
 
 async function load() {
   loading.value = true
@@ -56,6 +43,9 @@ onMounted(load)
         </div>
 
         <div class="flex flex-wrap gap-2 mb-2">
+          <span class="px-2 py-1 rounded-full text-xs font-medium" :class="updateStatusColors[item.update_status]">
+            التحديث: {{ updateStatusLabels[item.update_status] }}
+          </span>
           <span v-for="(reason, i) in item.reasons" :key="i" class="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
             {{ reason }}
           </span>

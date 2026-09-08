@@ -32,7 +32,7 @@ class ProjectInsightController extends Controller
 
         $projects = Project::query()
             ->with(['primaryDeveloper:id,name', 'developers:id,name'])
-            ->whereNotIn('pipeline_stage', self::INACTIVE_STAGES)
+            ->whereNotIn('pipeline_stage', Project::CLOSED_STAGES)
             ->where(function ($q) use ($user) {
                 $q->where('primary_developer_id', $user->id)
                     ->orWhereHas('developers', fn ($qq) => $qq->where('users.id', $user->id));
@@ -50,6 +50,8 @@ class ProjectInsightController extends Controller
                 'current_task' => $project->current_task,
                 'content_deadline' => $project->content_deadline,
                 'is_primary' => $project->primary_developer_id === $user->id,
+                'pipeline_stage' => $project->pipeline_stage,
+                'blocker' => $project->blocker,
                 'priority' => $priority,
                 'readiness' => $readiness,
             ];
@@ -92,6 +94,9 @@ class ProjectInsightController extends Controller
             if ($project->blocker === 'waiting_client') {
                 $reasons[] = 'المشروع متوقف بانتظار العميل';
             }
+            if ($readiness['missing_count'] > 0) {
+                $reasons[] = "ناقص {$readiness['missing_count']} من متطلبات المشروع";
+            }
 
             return [
                 'id' => $project->id,
@@ -103,7 +108,9 @@ class ProjectInsightController extends Controller
                 'days_since_update' => $project->last_client_update_at ? (int) $project->last_client_update_at->diffInDays(now()) : null,
                 'client_feedback_status' => $project->client_feedback_status,
                 'blocker' => $project->blocker,
+                'update_status' => $this->priorityService->updateStatus($project),
                 'missing_from_client' => $readiness['missing'],
+                'missing_count' => $readiness['missing_count'],
                 'reasons' => $reasons,
             ];
         })->values();

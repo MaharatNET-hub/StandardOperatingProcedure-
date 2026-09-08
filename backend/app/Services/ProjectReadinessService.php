@@ -58,7 +58,9 @@ class ProjectReadinessService
     }
 
     /**
-     * @return array{percent: int, items: array<int, array{key: string, label: string, status: string, message: ?string}>, missing: array<int, string>}
+     * Calc - Missing Items / Calc - Missing Count (SRS §12).
+     *
+     * @return array{percent: int, items: array<int, array{key: string, label: string, status: string, message: ?string}>, missing: array<int, string>, missing_count: int, missing_items: string}
      */
     public function evaluate(Project $project): array
     {
@@ -78,10 +80,14 @@ class ProjectReadinessService
         $readyCount = count(array_filter($items, fn ($i) => $i['status'] === 'ready'));
         $missing = array_map(fn ($i) => $i['label'], array_filter($items, fn ($i) => $i['status'] !== 'ready'));
 
+        $missing = array_values($missing);
+
         return [
             'percent' => count($items) > 0 ? (int) round(($readyCount / count($items)) * 100) : 100,
             'items' => $items,
-            'missing' => array_values($missing),
+            'missing' => $missing,
+            'missing_count' => count($missing),
+            'missing_items' => implode('، ', $missing),
         ];
     }
 
@@ -100,11 +106,11 @@ class ProjectReadinessService
                 : ['missing', $project->hosting_purchaser === 'client' ? 'بانتظار قيام العميل بشراء الاستضافة' : 'الاستضافة غير متوفرة بعد'],
             'content' => $project->content_ready ? ['ready', null] : ['missing', 'المحتوى النصي غير جاهز بعد'],
             'product_images' => $project->product_images_ready ? ['ready', null] : ['missing', 'صور المنتجات غير جاهزة بعد'],
-            'payment_gateway' => ! $project->needs_payment_gateway || $project->payment_gateway_status === 'done'
+            'payment_gateway' => ! $project->needs_payment_gateway || in_array($project->payment_gateway_status, ['done', 'na'], true)
                 ? ['ready', null]
                 : [$project->payment_gateway_status === 'in_progress' ? 'in_progress' : 'missing', 'إعداد بوابة الدفع لم يكتمل'],
             'shipping_company' => $project->has_shipping_company ? ['ready', null] : ['missing', 'لم يتم تحديد شركة شحن بعد'],
-            'seo' => ! $project->seo_required || $project->seo_status === 'done'
+            'seo' => ! $project->seo_required || in_array($project->seo_status, ['done', 'na'], true)
                 ? ['ready', null]
                 : [$project->seo_status === 'in_progress' ? 'in_progress' : 'missing', 'إعداد SEO لم يكتمل'],
             'google_analytics' => $project->google_analytics_connected ? ['ready', null] : ['missing', 'Google Analytics غير مربوط'],

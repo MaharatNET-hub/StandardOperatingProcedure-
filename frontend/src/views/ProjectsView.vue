@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
+import { projectTypeLabels, blockerLabels, priorityLabels, priorityColors } from '../lib/labels'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -46,40 +47,6 @@ const statusColors = {
   changes_requested: 'bg-red-100 text-red-700',
   approved: 'bg-emerald-100 text-emerald-700',
   delivered: 'bg-indigo-100 text-indigo-700',
-}
-
-const projectTypeLabels = {
-  ecommerce: 'متجر إلكتروني',
-  corporate: 'موقع شركة',
-  landing_page: 'صفحة هبوط',
-  portfolio: 'معرض أعمال',
-  blog: 'مدونة',
-  booking: 'موقع حجوزات',
-  marketplace: 'سوق إلكتروني',
-  custom: 'مخصص',
-  mobile_app: 'تطبيق موبايل',
-  other: 'أخرى',
-}
-
-const blockerLabels = {
-  none: 'لا يوجد',
-  waiting_client: 'بانتظار العميل',
-  waiting_developer: 'بانتظار المبرمج',
-  waiting_payment_gateway: 'بانتظار بوابة الدفع',
-  waiting_domain: 'بانتظار الدومين',
-  waiting_hosting: 'بانتظار الاستضافة',
-  waiting_content: 'بانتظار المحتوى',
-  waiting_logo: 'بانتظار الشعار',
-  waiting_product_images: 'بانتظار صور المنتجات',
-  other: 'أخرى',
-}
-
-const priorityLabels = { critical: 'حرجة', high: 'عالية', medium: 'متوسطة', low: 'منخفضة' }
-const priorityColors = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-slate-100 text-slate-600',
 }
 
 async function loadProjects() {
