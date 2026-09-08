@@ -10,8 +10,8 @@ else
   # boot keeps them in sync with the source without touching real accounts.
   php artisan db:seed --class=RoleSeeder --force
   php artisan db:seed --class=UserSeeder --force
-  # يملأ تخصّص المبرمجين الفارغ فقط — لا ينشئ حسابات ولا يستبدل اختياراً يدوياً.
-  php artisan db:seed --class=DeveloperSpecializationSeeder --force
+  # فريق المبرمجين — يطابق الحسابات القائمة بالاسم/البريد فلا يكرّرها.
+  php artisan db:seed --class=DeveloperSeeder --force
   # مشروع Zevora النموذجي — يُطابَق بالاسم فلا يتكرر.
   php artisan db:seed --class=ProjectSeeder --force
 fi
