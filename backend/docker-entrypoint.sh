@@ -12,6 +12,8 @@ else
   php artisan db:seed --class=UserSeeder --force
   # يملأ تخصّص المبرمجين الفارغ فقط — لا ينشئ حسابات ولا يستبدل اختياراً يدوياً.
   php artisan db:seed --class=DeveloperSpecializationSeeder --force
+  # مشروع Zevora النموذجي — يُطابَق بالاسم فلا يتكرر.
+  php artisan db:seed --class=ProjectSeeder --force
 fi
 
 php artisan storage:link || true

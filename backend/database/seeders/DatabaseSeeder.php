@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PhaseSeeder::class,
             ChecklistSeeder::class,
             ToolSeeder::class,
+            ProjectSeeder::class,
         ]);
     }
 }
