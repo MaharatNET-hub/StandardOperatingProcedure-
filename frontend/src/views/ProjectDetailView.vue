@@ -154,7 +154,7 @@ onMounted(loadProject)
       </nav>
     </div>
 
-    <ReadinessTab v-if="tab === 'readiness'" :project="project" />
+    <ReadinessTab v-if="tab === 'readiness'" :project="project" @reload="loadProject" />
     <ClientCommunicationTab v-else-if="tab === 'communication'" :project="project" @reload="loadProject" />
     <ProjectDetailsTab v-else-if="tab === 'details'" :project="project" @reload="loadProject" />
     <ProjectNotesTab v-else-if="tab === 'notes'" :project="project" @reload="loadProject" />

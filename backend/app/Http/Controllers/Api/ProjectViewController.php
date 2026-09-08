@@ -135,7 +135,7 @@ class ProjectViewController extends Controller
     {
         $user = $request->user();
 
-        $query = Project::query()->with(['primaryDeveloper:id,name,specialization', 'developers:id,name']);
+        $query = Project::query()->with(['primaryDeveloper:id,name,specialization', 'developers:id,name', 'requirementUpdates.author:id,name']);
 
         if (! $user->hasPermission('view_all_projects')) {
             $query->where(function ($q) use ($user) {

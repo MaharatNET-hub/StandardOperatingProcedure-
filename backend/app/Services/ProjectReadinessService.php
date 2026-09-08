@@ -42,6 +42,12 @@ class ProjectReadinessService
         'other' => ['logo', 'domain', 'hosting', 'content'],
     ];
 
+    /** اسم المتطلّب بالعربي — يُستخدم أيضاً في سجل النشاطات. */
+    public static function labelFor(string $key): string
+    {
+        return self::REQUIREMENT_LABELS[$key] ?? $key;
+    }
+
     public static function requirementsFor(?string $projectType): array
     {
         $stored = Setting::get(Setting::KEY_PROJECT_TYPE_REQUIREMENTS);
@@ -67,13 +73,28 @@ class ProjectReadinessService
         $keys = self::requirementsFor($project->project_type);
         $items = [];
 
+        // آخر تغيير مسجَّل لكل متطلّب — يعطي تاريخ الجاهزية ومن سجّلها.
+        $lastUpdates = $project->relationLoaded('requirementUpdates')
+            ? $project->requirementUpdates
+            : $project->requirementUpdates()->with('author:id,name')->get();
+        $lastUpdates = $lastUpdates
+            ->sortBy([['effective_date', 'asc'], ['id', 'asc']])
+            ->keyBy('requirement_key');
+
         foreach ($keys as $key) {
             [$status, $message] = $this->checkRequirement($project, $key);
+            $lastUpdate = $lastUpdates->get($key);
+
             $items[] = [
                 'key' => $key,
                 'label' => self::REQUIREMENT_LABELS[$key] ?? $key,
                 'status' => $status, // ready | missing | in_progress
                 'message' => $message,
+                'since' => $status === 'ready' && $lastUpdate?->status === 'ready'
+                    ? $lastUpdate->effective_date->toDateString()
+                    : null,
+                'updated_by' => $lastUpdate?->author?->name,
+                'note' => $lastUpdate?->note,
             ];
         }
 

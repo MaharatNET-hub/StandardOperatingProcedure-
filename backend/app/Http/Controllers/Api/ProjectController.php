@@ -21,7 +21,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $query = Project::query()
-            ->with(['creator:id,name', 'currentPhase', 'developers:id,name,role', 'primaryDeveloper:id,name'])
+            ->with(['creator:id,name', 'currentPhase', 'developers:id,name,role', 'primaryDeveloper:id,name', 'requirementUpdates.author:id,name'])
             ->withCount([
                 'checklistItems as checklist_total',
                 'checklistItems as checklist_done' => fn ($q) => $q->where('status', 'done'),
@@ -152,6 +152,7 @@ class ProjectController extends Controller
             'performanceReports.measurer:id,name',
             'qaReviews.reviewer:id,name',
             'signoffs.user:id,name',
+            'requirementUpdates.author:id,name',
         ]);
 
         $project->loadCount('notes');

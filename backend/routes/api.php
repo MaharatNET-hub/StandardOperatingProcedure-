@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ProjectInsightController;
 use App\Http\Controllers\Api\ProjectNoteController;
 use App\Http\Controllers\Api\ProjectPhaseController;
 use App\Http\Controllers\Api\ProjectReportController;
+use App\Http\Controllers\Api\ProjectRequirementController;
 use App\Http\Controllers\Api\ProjectViewController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
@@ -76,6 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{project}/send-client-update', [ProjectController::class, 'sendClientUpdate']);
     Route::get('/projects/{project}/notes', [ProjectNoteController::class, 'forProject']);
     Route::post('/projects/{project}/notes', [ProjectNoteController::class, 'store']);
+    Route::get('/projects/{project}/requirements', [ProjectRequirementController::class, 'index']);
+    Route::patch('/projects/{project}/requirements/{requirement}', [ProjectRequirementController::class, 'update']);
     Route::get('/projects/{project}/report-pdf', [ProjectReportController::class, 'pdf']);
 
     Route::get('/projects/{project}/seo-audits', [SeoAuditController::class, 'index']);

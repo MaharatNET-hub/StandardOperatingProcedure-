@@ -177,6 +177,11 @@ class Project extends Model
         return $this->hasMany(ProjectNote::class);
     }
 
+    public function requirementUpdates(): HasMany
+    {
+        return $this->hasMany(ProjectRequirementUpdate::class);
+    }
+
     /** عدد الأيام التي قضاها المشروع متوقفاً (لوحة Paused — Monitor). */
     public function pausedDays(): ?int
     {

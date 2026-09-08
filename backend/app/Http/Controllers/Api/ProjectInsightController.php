@@ -31,7 +31,7 @@ class ProjectInsightController extends Controller
         $user = $request->user();
 
         $projects = Project::query()
-            ->with(['primaryDeveloper:id,name', 'developers:id,name'])
+            ->with(['primaryDeveloper:id,name', 'developers:id,name', 'requirementUpdates.author:id,name'])
             ->whereNotIn('pipeline_stage', Project::CLOSED_STAGES)
             ->where(function ($q) use ($user) {
                 $q->where('primary_developer_id', $user->id)
@@ -72,7 +72,7 @@ class ProjectInsightController extends Controller
         }
 
         $projects = Project::query()
-            ->with(['primaryDeveloper:id,name'])
+            ->with(['primaryDeveloper:id,name', 'requirementUpdates.author:id,name'])
             ->whereNotIn('pipeline_stage', self::INACTIVE_STAGES)
             ->where(function ($q) {
                 $q->where('next_client_update_at', '<=', now())
