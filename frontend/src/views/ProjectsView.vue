@@ -247,69 +247,73 @@ onMounted(() => {
 
     <!-- Create/Edit modal -->
     <div v-if="showForm" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-        <h2 class="text-lg font-bold text-slate-900 mb-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <h2 class="text-lg font-bold text-slate-900 px-6 pt-6 pb-4 shrink-0">
           {{ editingProject ? 'تعديل المشروع' : 'مشروع جديد' }}
         </h2>
-        <form class="space-y-4" @submit.prevent="submitForm">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع</label>
-            <input v-model="form.name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">اسم العميل</label>
-            <input v-model="form.client_name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">نوع المشروع</label>
-            <select v-model="form.project_type" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-              <option value="">— اختر —</option>
-              <option v-for="(label, key) in projectTypeLabels" :key="key" :value="key">{{ label }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">رابط Live Preview (Envato)</label>
-            <input v-model="form.envato_preview_url" type="url" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">
-              رابط الموقع المباشر
-              <span class="text-slate-400 font-normal">(لفحص PageSpeed)</span>
-            </label>
-            <input v-model="form.site_url" type="url" placeholder="https://example.com" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">مهلة تسليم المحتوى</label>
-            <input v-model="form.content_deadline" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">المبرمج الرئيسي (المسؤول عن المشروع)</label>
-            <select v-model="form.primary_developer_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-              <option value="">— بدون —</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">المبرمجون المساعدون</label>
-            <div class="w-full rounded-lg border border-slate-300 divide-y divide-slate-100 max-h-40 overflow-y-auto">
-              <label
-                v-for="u in users"
-                :key="u.id"
-                class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
-              >
-                <input type="checkbox" :value="u.id" v-model="form.developer_ids" class="rounded border-slate-300" />
-                {{ u.name }}
-                <span class="text-slate-400 text-xs">({{ u.email }})</span>
-              </label>
-              <p v-if="!users.length" class="px-3 py-3 text-sm text-slate-400">
-                لا يوجد مبرمجون بعد — أضفهم من صفحة "فريق العمل" أولاً.
-              </p>
+        <form class="flex flex-col min-h-0 flex-1" @submit.prevent="submitForm">
+          <!-- جسم النموذج: عمودان على الشاشات المتوسطة فما فوق، ويمرّر
+               داخلياً إذا لم تتّسع الشاشة بدل أن يمتدّ البوب أب خارجها -->
+          <div class="grid sm:grid-cols-2 gap-4 px-6 pb-4 overflow-y-auto flex-1 min-h-0">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع</label>
+              <input v-model="form.name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">اسم العميل</label>
+              <input v-model="form.client_name" required class="w-full rounded-lg border border-slate-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">نوع المشروع</label>
+              <select v-model="form.project_type" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                <option value="">— اختر —</option>
+                <option v-for="(label, key) in projectTypeLabels" :key="key" :value="key">{{ label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">رابط Live Preview (Envato)</label>
+              <input v-model="form.envato_preview_url" type="url" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                رابط الموقع المباشر
+                <span class="text-slate-400 font-normal">(لفحص PageSpeed)</span>
+              </label>
+              <input v-model="form.site_url" type="url" placeholder="https://example.com" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">مهلة تسليم المحتوى</label>
+              <input v-model="form.content_deadline" type="date" class="w-full rounded-lg border border-slate-300 px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">المبرمج الرئيسي (المسؤول عن المشروع)</label>
+              <select v-model="form.primary_developer_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                <option value="">— بدون —</option>
+                <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">المبرمجون المساعدون</label>
+              <div class="w-full rounded-lg border border-slate-300 divide-y divide-slate-100 max-h-40 overflow-y-auto">
+                <label
+                  v-for="u in users"
+                  :key="u.id"
+                  class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50"
+                >
+                  <input type="checkbox" :value="u.id" v-model="form.developer_ids" class="rounded border-slate-300" />
+                  {{ u.name }}
+                  <span class="text-slate-400 text-xs">({{ u.email }})</span>
+                </label>
+                <p v-if="!users.length" class="px-3 py-3 text-sm text-slate-400">
+                  لا يوجد مبرمجون بعد — أضفهم من صفحة "فريق العمل" أولاً.
+                </p>
+              </div>
+            </div>
+
+            <p v-if="error" class="text-sm text-red-600 sm:col-span-2">{{ error }}</p>
           </div>
 
-          <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-
-          <div class="flex gap-3 justify-end pt-2">
+          <div class="flex gap-3 justify-end px-6 py-4 border-t border-slate-200 shrink-0">
             <button type="button" class="px-4 py-2 text-sm rounded-lg text-slate-600 hover:bg-slate-100" @click="showForm = false">
               إلغاء
             </button>
