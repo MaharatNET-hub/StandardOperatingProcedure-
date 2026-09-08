@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
+import { specializationLabels, specializationColors } from '../lib/labels'
 
 const auth = useAuthStore()
 const users = ref([])
@@ -14,7 +15,7 @@ const error = ref('')
 const deleting = ref(null)
 const deleteError = ref('')
 
-const emptyForm = () => ({ name: '', email: '', password: '', role: 'developer' })
+const emptyForm = () => ({ name: '', email: '', password: '', role: 'developer', specialization: '' })
 const form = ref(emptyForm())
 
 const roleLabels = computed(() => Object.fromEntries(roles.value.map((r) => [r.key, r.label_ar])))
@@ -36,7 +37,7 @@ function openCreate() {
 
 function openEdit(user) {
   editingUser.value = user
-  form.value = { name: user.name, email: user.email, password: '', role: user.role }
+  form.value = { name: user.name, email: user.email, password: '', role: user.role, specialization: user.specialization || '' }
   error.value = ''
   showForm.value = true
 }
@@ -46,11 +47,11 @@ async function submitForm() {
   saving.value = true
   try {
     if (editingUser.value) {
-      const payload = { ...form.value }
+      const payload = { ...form.value, specialization: form.value.specialization || null }
       if (!payload.password) delete payload.password
       await api.patch(`/users/${editingUser.value.id}`, payload)
     } else {
-      await api.post('/users', form.value)
+      await api.post('/users', { ...form.value, specialization: form.value.specialization || null })
     }
     showForm.value = false
     await load()
@@ -100,6 +101,7 @@ onMounted(load)
             <th class="text-right px-4 py-3 font-medium">الاسم</th>
             <th class="text-right px-4 py-3 font-medium">البريد الإلكتروني</th>
             <th class="text-right px-4 py-3 font-medium">الدور</th>
+            <th class="text-right px-4 py-3 font-medium">التخصّص</th>
             <th class="text-right px-4 py-3 font-medium">إجراءات</th>
           </tr>
         </thead>
@@ -108,6 +110,16 @@ onMounted(load)
             <td class="px-4 py-3 font-medium text-slate-900">{{ u.name }}</td>
             <td class="px-4 py-3 text-slate-600">{{ u.email }}</td>
             <td class="px-4 py-3 text-slate-600">{{ roleLabels[u.role] || u.role }}</td>
+            <td class="px-4 py-3">
+              <span
+                v-if="u.specialization"
+                class="px-2 py-0.5 rounded-full text-xs font-medium"
+                :class="specializationColors[u.specialization]"
+              >
+                {{ specializationLabels[u.specialization] }}
+              </span>
+              <span v-else class="text-slate-300 text-xs">—</span>
+            </td>
             <td class="px-4 py-3">
               <div class="flex gap-3 text-xs">
                 <button class="text-indigo-600 hover:underline" @click="openEdit(u)">تعديل</button>
@@ -159,6 +171,17 @@ onMounted(load)
             <router-link :to="{ name: 'roles' }" v-if="auth.canManageRoles" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">
               إدارة الأدوار والصلاحيات
             </router-link>
+          </div>
+
+          <div v-if="form.role === 'developer'">
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              التخصّص
+              <span class="text-slate-400 font-normal">(لتوزيع المشاريع وفلترة اللوحات)</span>
+            </label>
+            <select v-model="form.specialization" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+              <option value="">— غير محدد —</option>
+              <option v-for="(label, key) in specializationLabels" :key="key" :value="key">{{ label }}</option>
+            </select>
           </div>
 
           <p v-if="error" class="text-sm text-red-600">{{ error }}</p>

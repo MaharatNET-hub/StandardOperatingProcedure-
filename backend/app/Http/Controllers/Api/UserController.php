@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        return User::select('id', 'name', 'email', 'role')->orderBy('name')->get();
+        return User::select('id', 'name', 'email', 'role', 'specialization')->orderBy('name')->get();
     }
 
     public function store(Request $request)
@@ -22,6 +22,7 @@ class UserController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'role' => ['required', 'exists:roles,key'],
+            'specialization' => ['nullable', 'in:'.implode(',', User::SPECIALIZATIONS)],
         ]);
 
         $user = User::create([
@@ -39,6 +40,7 @@ class UserController extends Controller
             'email' => ['sometimes', 'email', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:8'],
             'role' => ['sometimes', 'exists:roles,key'],
+            'specialization' => ['nullable', 'in:'.implode(',', User::SPECIALIZATIONS)],
         ]);
 
         if (isset($data['role']) && $data['role'] !== $user->role
@@ -56,7 +58,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return $user->fresh()->only(['id', 'name', 'email', 'role']);
+        return $user->fresh()->only(['id', 'name', 'email', 'role', 'specialization']);
     }
 
     public function destroy(Request $request, User $user)

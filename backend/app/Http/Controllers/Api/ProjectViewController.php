@@ -135,7 +135,7 @@ class ProjectViewController extends Controller
     {
         $user = $request->user();
 
-        $query = Project::query()->with(['primaryDeveloper:id,name', 'developers:id,name']);
+        $query = Project::query()->with(['primaryDeveloper:id,name,specialization', 'developers:id,name']);
 
         if (! $user->hasPermission('view_all_projects')) {
             $query->where(function ($q) use ($user) {
@@ -146,6 +146,12 @@ class ProjectViewController extends Controller
 
         if ($scope) {
             $scope($query);
+        }
+
+        // فلترة اللوحات حسب تخصّص المبرمج المسؤول (ووردبريس / برمجة خاصة / فلاتر)
+        if ($request->filled('specialization')) {
+            $specialization = $request->string('specialization')->toString();
+            $query->whereHas('primaryDeveloper', fn ($q) => $q->where('specialization', $specialization));
         }
 
         if ($request->filled('developer_id')) {
@@ -179,6 +185,7 @@ class ProjectViewController extends Controller
                 'owner' => [
                     'id' => $project->primary_developer_id,
                     'name' => $project->primaryDeveloper?->name,
+                    'specialization' => $project->primaryDeveloper?->specialization,
                 ],
                 'assistants' => $project->developers
                     ->where('id', '!=', $project->primary_developer_id)
@@ -203,6 +210,7 @@ class ProjectViewController extends Controller
                 'developer' => [
                     'id' => $group->first()['owner']['id'],
                     'name' => $group->first()['owner']['name'] ?? 'غير مُسند',
+                    'specialization' => $group->first()['owner']['specialization'],
                 ],
                 'projects' => $group->sortByDesc(fn ($row) => $row['priority']['score'])->values(),
                 'total_score' => $group->sum(fn ($row) => $row['priority']['score']),

@@ -105,6 +105,23 @@ export const noteStatusColors = {
   done: 'bg-emerald-100 text-emerald-700',
 }
 
+// تخصّص المبرمج
+export const specializationLabels = {
+  wordpress: 'ووردبريس',
+  custom_dev: 'برمجة خاصة',
+  flutter: 'فلاتر (تطبيقات موبايل)',
+  frontend: 'واجهات أمامية',
+  other: 'أخرى',
+}
+
+export const specializationColors = {
+  wordpress: 'bg-sky-100 text-sky-700',
+  custom_dev: 'bg-violet-100 text-violet-700',
+  flutter: 'bg-teal-100 text-teal-700',
+  frontend: 'bg-amber-100 text-amber-700',
+  other: 'bg-slate-100 text-slate-600',
+}
+
 export function formatDate(value) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })

@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'specialization'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,6 +27,13 @@ class User extends Authenticatable
     public const ROLE_QA_REVIEWER = 'qa_reviewer';
 
     public const ROLE_IT_SPECIALIST = 'it_specialist';
+
+    /**
+     * تخصّصات المبرمجين — تُستخدم لتوزيع المشاريع وفلترة لوحات الأولويات.
+     *
+     * @var array<int, string>
+     */
+    public const SPECIALIZATIONS = ['wordpress', 'custom_dev', 'flutter', 'frontend', 'other'];
 
     protected function casts(): array
     {

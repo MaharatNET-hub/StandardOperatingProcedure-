@@ -9,6 +9,8 @@ import {
   updateStatusLabels,
   updateStatusColors,
   feedbackLabels,
+  specializationLabels,
+  specializationColors,
   formatDate,
   formatDateTime,
 } from '../lib/labels'
@@ -27,6 +29,7 @@ const boards = [
 const active = ref('today-by-developer')
 const loading = ref(true)
 const payload = ref(null)
+const specialization = ref('')
 
 const activeBoard = computed(() => boards.find((b) => b.key === active.value))
 const topPerDeveloper = computed(() => payload.value?.top_per_developer ?? 3)
@@ -38,7 +41,8 @@ async function load() {
   loading.value = true
   payload.value = null
   try {
-    const { data } = await api.get(`/views/${active.value}`)
+    const params = specialization.value ? { specialization: specialization.value } : {}
+    const { data } = await api.get(`/views/${active.value}`, { params })
     payload.value = data
   } finally {
     loading.value = false
@@ -53,7 +57,7 @@ function deadlineTone(row) {
   return 'text-slate-500'
 }
 
-watch(active, load)
+watch([active, specialization], load)
 onMounted(load)
 </script>
 
@@ -76,9 +80,18 @@ onMounted(load)
       </button>
     </div>
 
-    <div class="mb-5">
-      <h2 class="text-lg font-semibold text-slate-900">{{ activeBoard.title }}</h2>
-      <p class="text-sm text-slate-500">{{ activeBoard.hint }}</p>
+    <div class="flex items-end justify-between gap-4 flex-wrap mb-5">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">{{ activeBoard.title }}</h2>
+        <p class="text-sm text-slate-500">{{ activeBoard.hint }}</p>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">تخصّص المبرمج المسؤول</label>
+        <select v-model="specialization" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white">
+          <option value="">كل التخصّصات</option>
+          <option v-for="(label, key) in specializationLabels" :key="key" :value="key">{{ label }}</option>
+        </select>
+      </div>
     </div>
 
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
@@ -112,7 +125,16 @@ onMounted(load)
         <div v-else class="space-y-5">
           <section v-for="group in payload.data" :key="group.developer.id || 'unassigned'" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <header class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-              <div class="font-semibold text-slate-900">{{ group.developer.name || 'غير مُسند' }}</div>
+              <div class="font-semibold text-slate-900 flex items-center gap-2">
+                {{ group.developer.name || 'غير مُسند' }}
+                <span
+                  v-if="group.developer.specialization"
+                  class="px-2 py-0.5 rounded-full text-xs font-medium"
+                  :class="specializationColors[group.developer.specialization]"
+                >
+                  {{ specializationLabels[group.developer.specialization] }}
+                </span>
+              </div>
               <div class="text-xs text-slate-500">{{ group.projects.length }} مشروع · مجموع النقاط {{ group.total_score }}</div>
             </header>
 
