@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Project extends Model
 {
@@ -180,6 +181,12 @@ class Project extends Model
     public function requirementUpdates(): HasMany
     {
         return $this->hasMany(ProjectRequirementUpdate::class);
+    }
+
+    /** آخر ملاحظة مسجّلة — تُعرض على بطاقة المشروع في القائمة. */
+    public function latestNote(): HasOne
+    {
+        return $this->hasOne(ProjectNote::class)->latestOfMany('id');
     }
 
     /** عدد الأيام التي قضاها المشروع متوقفاً (لوحة Paused — Monitor). */

@@ -3,7 +3,15 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../lib/api'
 import { useAuthStore } from '../stores/auth'
-import { projectTypeLabels, blockerLabels, priorityLabels, priorityColors } from '../lib/labels'
+import {
+  projectTypeLabels,
+  blockerLabels,
+  priorityLabels,
+  priorityColors,
+  pipelineStageLabels,
+  noteTypeLabels,
+  formatDate,
+} from '../lib/labels'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -47,6 +55,45 @@ const statusColors = {
   changes_requested: 'bg-red-100 text-red-700',
   approved: 'bg-emerald-100 text-emerald-700',
   delivered: 'bg-indigo-100 text-indigo-700',
+}
+
+// أيام حتى التسليم: موجب = متبقٍّ، سالب = تأخّر
+function daysToDeadline(project) {
+  if (!project.content_deadline) return null
+  const due = new Date(project.content_deadline)
+  const today = new Date()
+  due.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  return Math.round((due - today) / 86400000)
+}
+
+function deadlineText(project) {
+  const days = daysToDeadline(project)
+  if (days === null) return 'بلا موعد تسليم'
+  if (days < 0) return `متأخر ${Math.abs(days)} يوم`
+  if (days === 0) return 'التسليم اليوم'
+  if (days === 1) return 'يوم واحد للتسليم'
+  return `${days} يوم للتسليم`
+}
+
+function deadlineTone(project) {
+  const days = daysToDeadline(project)
+  if (days === null) return 'bg-slate-100 text-slate-500'
+  if (days < 0) return 'bg-red-100 text-red-700'
+  if (days <= 3) return 'bg-amber-100 text-amber-700'
+  if (days <= 7) return 'bg-sky-100 text-sky-700'
+  return 'bg-emerald-100 text-emerald-700'
+}
+
+function checklistPercent(project) {
+  if (!project.checklist_total) return 0
+  return Math.round((project.checklist_done / project.checklist_total) * 100)
+}
+
+function barTone(percent) {
+  if (percent >= 80) return 'bg-emerald-500'
+  if (percent >= 40) return 'bg-amber-500'
+  return 'bg-red-500'
 }
 
 async function loadProjects() {
@@ -194,55 +241,132 @@ onMounted(() => {
 
     <div v-if="loading" class="text-slate-500">...جاري التحميل</div>
 
-    <div v-else class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 text-xs">
-          <tr>
-            <th class="text-right px-4 py-3 font-medium">المشروع</th>
-            <th class="text-right px-4 py-3 font-medium">العميل</th>
-            <th class="text-right px-4 py-3 font-medium">المرحلة الحالية</th>
-            <th class="text-right px-4 py-3 font-medium">التحقق</th>
-            <th class="text-right px-4 py-3 font-medium">الحالة</th>
-            <th class="text-right px-4 py-3 font-medium">الأولوية</th>
-            <th v-if="auth.canManageProjects" class="text-right px-4 py-3 font-medium">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="p in projects"
-            :key="p.id"
-            class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
-            @click="router.push({ name: 'project-detail', params: { id: p.id } })"
-          >
-            <td class="px-4 py-3 font-medium text-slate-900">{{ p.name }}</td>
-            <td class="px-4 py-3 text-slate-600">{{ p.client_name }}</td>
-            <td class="px-4 py-3 text-slate-600">{{ p.current_phase?.name_ar || '—' }}</td>
-            <td class="px-4 py-3 text-slate-600">
-              {{ p.checklist_done }} / {{ p.checklist_total }}
-            </td>
-            <td class="px-4 py-3">
-              <span class="px-2 py-1 rounded-full text-xs font-medium" :class="statusColors[p.status]">
-                {{ statusLabels[p.status] || p.status }}
-              </span>
-            </td>
-            <td class="px-4 py-3">
-              <span v-if="p.priority" class="px-2 py-1 rounded-full text-xs font-medium" :class="priorityColors[p.priority.level]">
-                {{ priorityLabels[p.priority.level] }} ({{ p.priority.score }})
-              </span>
-              <span v-if="p.priority?.blocked" class="ms-1 text-xs text-slate-400">متوقف</span>
-            </td>
-            <td v-if="auth.canManageProjects" class="px-4 py-3" @click.stop>
-              <div class="flex gap-3 text-xs">
-                <button class="text-indigo-600 hover:underline" @click="openEdit(p)">تعديل</button>
-                <button class="text-red-500 hover:underline" @click="confirmDelete(p)">حذف</button>
+    <div v-else-if="!projects.length" class="text-center text-slate-400 py-16 bg-white rounded-xl border border-slate-200">
+      لا توجد مشاريع مطابقة.
+    </div>
+
+    <!-- بطاقات المشاريع: ما المتبقي، كم بقي للتسليم، وأين وصل التنفيذ -->
+    <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <article
+        v-for="p in projects"
+        :key="p.id"
+        class="group bg-white rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition cursor-pointer flex flex-col overflow-hidden"
+        @click="router.push({ name: 'project-detail', params: { id: p.id } })"
+      >
+        <!-- شريط علوي بلون الأولوية -->
+        <div class="h-1" :class="{
+          'bg-red-500': p.priority?.level === 'critical',
+          'bg-orange-400': p.priority?.level === 'high',
+          'bg-amber-400': p.priority?.level === 'medium',
+          'bg-slate-200': !p.priority || p.priority.level === 'low',
+        }"></div>
+
+        <div class="p-4 flex-1 flex flex-col gap-3">
+          <!-- الاسم والعميل والأولوية -->
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <h3 class="font-bold text-slate-900 truncate group-hover:text-indigo-600">{{ p.name }}</h3>
+              <p class="text-xs text-slate-500 truncate">
+                {{ p.client_name }}
+                <span v-if="p.project_type"> · {{ projectTypeLabels[p.project_type] }}</span>
+              </p>
+            </div>
+            <span
+              v-if="p.priority"
+              class="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold"
+              :class="priorityColors[p.priority.level]"
+              :title="p.priority.summary || 'لا توجد عوامل ترفع الأولوية حالياً'"
+            >
+              {{ priorityLabels[p.priority.level] }} · {{ p.priority.score }}
+            </span>
+          </div>
+
+          <!-- شارات: التسليم، المرحلة، التوقف -->
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="deadlineTone(p)">
+              {{ deadlineText(p) }}
+            </span>
+            <span v-if="p.pipeline_stage" class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+              {{ pipelineStageLabels[p.pipeline_stage] }}
+            </span>
+            <span
+              v-if="p.blocker && p.blocker !== 'none'"
+              class="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-600"
+            >
+              ⏸ {{ blockerLabels[p.blocker] }}
+            </span>
+          </div>
+
+          <!-- شريطا التقدّم: التنفيذ والجاهزية -->
+          <div class="space-y-2">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-500">نسبة التنفيذ</span>
+                <span class="font-medium text-slate-700">
+                  {{ checklistPercent(p) }}%
+                  <span class="text-slate-400 font-normal">({{ p.checklist_done }}/{{ p.checklist_total }})</span>
+                </span>
               </div>
-            </td>
-          </tr>
-          <tr v-if="!projects.length">
-            <td colspan="7" class="px-4 py-8 text-center text-slate-400">لا توجد مشاريع بعد.</td>
-          </tr>
-        </tbody>
-      </table>
+              <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div class="h-full rounded-full transition-all" :class="barTone(checklistPercent(p))" :style="{ width: checklistPercent(p) + '%' }"></div>
+              </div>
+            </div>
+            <div v-if="p.readiness">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-500">جاهزية المتطلبات</span>
+                <span class="font-medium text-slate-700">{{ p.readiness.percent }}%</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div class="h-full rounded-full transition-all" :class="barTone(p.readiness.percent)" :style="{ width: p.readiness.percent + '%' }"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- المتبقي من المتطلبات -->
+          <div v-if="p.readiness?.missing_count" class="bg-amber-50 rounded-lg px-3 py-2">
+            <div class="text-xs font-medium text-amber-900 mb-1">
+              متبقٍّ {{ p.readiness.missing_count }}:
+            </div>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="item in p.readiness.missing.slice(0, 4)"
+                :key="item"
+                class="px-1.5 py-0.5 rounded bg-white text-amber-800 text-[11px] border border-amber-200"
+              >
+                {{ item }}
+              </span>
+              <span v-if="p.readiness.missing.length > 4" class="text-[11px] text-amber-700 self-center">
+                +{{ p.readiness.missing.length - 4 }}
+              </span>
+            </div>
+          </div>
+          <div v-else class="bg-emerald-50 text-emerald-700 text-xs rounded-lg px-3 py-2">
+            ✓ كل المتطلبات مكتملة
+          </div>
+
+          <!-- آخر ملاحظة -->
+          <div v-if="p.latest_note" class="border-s-2 border-slate-200 ps-2.5">
+            <p class="text-xs text-slate-600 line-clamp-2">
+              <span class="text-slate-400">{{ noteTypeLabels[p.latest_note.type] }}:</span>
+              {{ p.latest_note.title }}
+            </p>
+            <p class="text-[11px] text-slate-400 mt-0.5">
+              {{ p.latest_note.author?.name }} · {{ formatDate(p.latest_note.created_at) }}
+            </p>
+          </div>
+        </div>
+
+        <!-- تذييل: المبرمج والإجراءات -->
+        <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+          <span class="text-xs text-slate-500 truncate">
+            {{ p.primary_developer?.name || 'غير مُسند' }}
+          </span>
+          <div v-if="auth.canManageProjects" class="flex gap-3 text-xs shrink-0" @click.stop>
+            <button class="text-indigo-600 hover:underline" @click="openEdit(p)">تعديل</button>
+            <button class="text-red-500 hover:underline" @click="confirmDelete(p)">حذف</button>
+          </div>
+        </div>
+      </article>
     </div>
 
     <!-- Create/Edit modal -->
